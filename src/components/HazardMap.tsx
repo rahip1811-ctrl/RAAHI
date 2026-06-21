@@ -47,6 +47,19 @@ export default function HazardMap() {
   const announcedRef = useRef<Set<string>>(new Set());
   const lastFetchRef = useRef<number>(0);
   const userMarkerRef = useRef<maplibregl.Marker | null>(null);
+  // IDs of hazards reported in THIS browser session (so only you can edit/delete them).
+  const sessionReportsRef = useRef<Set<string>>(new Set());
+  const [selected, setSelected] = useState<{
+    id: string;
+    type: string;
+    severity: string;
+    owned: boolean;
+    lng: number;
+    lat: number;
+  } | null>(null);
+  const [editing, setEditing] = useState(false);
+  const [editType, setEditType] = useState("pothole");
+  const [editSeverity, setEditSeverity] = useState("medium");
 
   useEffect(() => {
     reportModeRef.current = reportMode;
@@ -99,7 +112,13 @@ export default function HazardMap() {
         const features = hazards.map((h) => ({
           type: "Feature" as const,
           geometry: { type: "Point" as const, coordinates: [h.lng, h.lat] },
-          properties: { id: h.id, type: h.type, severity: h.severity },
+          properties: {
+            id: h.id,
+            type: h.type,
+            severity: h.severity,
+            lng: h.lng,
+            lat: h.lat,
+          },
         }));
         const source = map.getSource("hazards") as
           | maplibregl.GeoJSONSource
@@ -149,28 +168,27 @@ export default function HazardMap() {
       }
     });
 
-    // Tap a dot (when NOT reporting) -> details popup.
+    // Tap a dot (when NOT reporting) -> open the details panel.
     map.on("click", "hazard-points", (e) => {
       if (reportModeRef.current) return;
       const f = e.features?.[0];
       if (!f) return;
-      const p = (f.properties ?? {}) as { type?: string; severity?: string };
-      const coords = (f.geometry as GeoJSON.Point).coordinates as [
-        number,
-        number
-      ];
-      new maplibregl.Popup({ closeButton: false })
-        .setLngLat(coords)
-        .setHTML(
-          `<div style="font-family:sans-serif">
-             <strong style="text-transform:capitalize">${(p.type ?? "").replace(
-               "_",
-               " "
-             )}</strong><br/>severity: <span style="text-transform:capitalize">${
-            p.severity ?? ""
-          }</span></div>`
-        )
-        .addTo(map);
+      const p = (f.properties ?? {}) as {
+        id?: string;
+        type?: string;
+        severity?: string;
+        lng?: number;
+        lat?: number;
+      };
+      if (!p.id) return;
+      setSelected({
+        id: p.id,
+        type: p.type ?? "",
+        severity: p.severity ?? "",
+        owned: sessionReportsRef.current.has(p.id),
+        lng: Number(p.lng),
+        lat: Number(p.lat),
+      });
     });
     map.on("mouseenter", "hazard-points", () => {
       if (!reportModeRef.current) map.getCanvas().style.cursor = "pointer";
@@ -189,7 +207,7 @@ export default function HazardMap() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
-    if (draft) {
+    if (draft && Number.isFinite(draft.lng) && Number.isFinite(draft.lat)) {
       if (!draftMarkerRef.current) {
         const m = new maplibregl.Marker({ color: "#2563eb", draggable: true })
           .setLngLat([draft.lng, draft.lat])
@@ -283,6 +301,8 @@ export default function HazardMap() {
         body: JSON.stringify({ type, severity, lat: draft.lat, lng: draft.lng }),
       });
       if (!res.ok) throw new Error("save failed");
+      const data = await res.json();
+      if (data?.hazard?.id) sessionReportsRef.current.add(data.hazard.id);
       setReportMode(false);
       setDraft(null);
       reloadRef.current();
@@ -390,6 +410,62 @@ export default function HazardMap() {
       },
       { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
     );
+  }
+
+  function openEdit() {
+    if (!selected) return;
+    setEditType(selected.type);
+    setEditSeverity(selected.severity);
+    setDraft(null); // no location change unless they choose to move it
+    setEditing(true);
+  }
+  function startMove() {
+    if (!selected) return;
+    if (!Number.isFinite(selected.lng) || !Number.isFinite(selected.lat)) return;
+    setDraft({ lng: selected.lng, lat: selected.lat });
+    mapRef.current?.flyTo({ center: [selected.lng, selected.lat], zoom: 16 });
+  }
+  async function saveEdit() {
+    if (!selected) return;
+    try {
+      const res = await fetch(`/api/hazards/${selected.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          type: editType,
+          severity: editSeverity,
+          // include new coords only if the user moved the pin
+          ...(draft ? { lat: draft.lat, lng: draft.lng } : {}),
+        }),
+      });
+      if (!res.ok) throw new Error("update failed");
+      setEditing(false);
+      setSelected(null);
+      setDraft(null);
+      reloadRef.current();
+    } catch (err) {
+      console.error(err);
+      alert("Could not update. Please try again.");
+    }
+  }
+  async function deleteSelected() {
+    if (!selected) return;
+    if (!window.confirm("Delete this hazard?")) return;
+    try {
+      const res = await fetch(`/api/hazards/${selected.id}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) {
+        const info = await res.json().catch(() => ({}));
+        throw new Error(`${res.status}: ${info.error ?? "unknown"}`);
+      }
+      sessionReportsRef.current.delete(selected.id);
+      setSelected(null);
+      reloadRef.current();
+    } catch (err) {
+      console.error(err);
+      alert("Could not delete — " + (err as Error).message);
+    }
   }
 
   return (
@@ -525,6 +601,101 @@ export default function HazardMap() {
                 </button>
                 <button
                   onClick={cancelReport}
+                  className="rounded-lg px-4 py-2 font-semibold text-zinc-400 hover:text-white"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {selected && !reportMode && (
+        <div className="absolute inset-x-0 bottom-0 z-20 mx-auto max-w-lg rounded-t-2xl bg-zinc-900/95 p-4 text-white shadow-2xl">
+          {!editing ? (
+            <div className="space-y-3">
+              <div className="flex items-start justify-between">
+                <div>
+                  <p className="text-lg font-semibold capitalize">
+                    {selected.type.replace("_", " ")}
+                  </p>
+                  <p className="text-sm capitalize text-zinc-400">
+                    Severity: {selected.severity}
+                  </p>
+                </div>
+                <button
+                  onClick={() => {
+                    setSelected(null);
+                    setDraft(null);
+                  }}
+                  className="px-2 text-zinc-400 hover:text-white"
+                >
+                  ✕
+                </button>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={openEdit}
+                  className="flex-1 rounded-lg bg-zinc-700 px-4 py-2 font-semibold hover:bg-zinc-600"
+                >
+                  Edit
+                </button>
+                <button
+                  onClick={deleteSelected}
+                  className="flex-1 rounded-lg bg-red-600 px-4 py-2 font-semibold hover:bg-red-500"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              <p className="text-sm font-semibold">Edit hazard</p>
+              <label className="block text-sm">
+                Type
+                <select
+                  value={editType}
+                  onChange={(e) => setEditType(e.target.value)}
+                  className="mt-1 w-full rounded-lg bg-zinc-800 p-2 text-white"
+                >
+                  {HAZARD_TYPES.map((t) => (
+                    <option key={t.value} value={t.value}>
+                      {t.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label className="block text-sm">
+                Severity
+                <select
+                  value={editSeverity}
+                  onChange={(e) => setEditSeverity(e.target.value)}
+                  className="mt-1 w-full rounded-lg bg-zinc-800 p-2 text-white"
+                >
+                  <option value="low">Low</option>
+                  <option value="medium">Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </label>
+              <button
+                onClick={startMove}
+                className="w-full rounded-lg bg-zinc-700 px-4 py-2 text-sm font-semibold hover:bg-zinc-600"
+              >
+                {draft ? "📍 Drag the blue pin on the map to adjust" : "📍 Move location"}
+              </button>
+              <div className="flex gap-2 pt-1">
+                <button
+                  onClick={saveEdit}
+                  className="flex-1 rounded-lg bg-amber-400 px-4 py-2 font-semibold text-zinc-950 hover:bg-amber-300"
+                >
+                  Save
+                </button>
+                <button
+                  onClick={() => {
+                    setEditing(false);
+                    setDraft(null);
+                  }}
                   className="rounded-lg px-4 py-2 font-semibold text-zinc-400 hover:text-white"
                 >
                   Cancel
