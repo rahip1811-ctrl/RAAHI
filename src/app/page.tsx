@@ -1,3 +1,5 @@
+import Link from "next/link";
+
 export default function Home() {
   return (
     <main className="flex min-h-screen flex-col items-center justify-center bg-zinc-950 px-6 text-center text-white">
@@ -19,18 +21,18 @@ export default function Home() {
       </p>
 
       <div className="mt-10 flex flex-col gap-4 sm:flex-row">
-        <button
-          disabled
-          className="cursor-not-allowed rounded-full bg-amber-400 px-6 py-3 font-semibold text-zinc-950 opacity-60"
+        <Link
+          href="/map"
+          className="rounded-full bg-amber-400 px-6 py-3 font-semibold text-zinc-950 transition-colors hover:bg-amber-300"
         >
-          Open the map (coming soon)
-        </button>
-        <button
-          disabled
-          className="cursor-not-allowed rounded-full border border-zinc-700 px-6 py-3 font-semibold text-zinc-300 opacity-60"
+          Open the map
+        </Link>
+        <Link
+          href="/map"
+          className="rounded-full border border-zinc-700 px-6 py-3 font-semibold text-zinc-300 transition-colors hover:border-zinc-500 hover:text-white"
         >
-          Report a hazard (coming soon)
-        </button>
+          Report a hazard
+        </Link>
       </div>
 
       <p className="mt-16 text-sm text-zinc-500">
