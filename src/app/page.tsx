@@ -6,8 +6,11 @@ export default function Home() {
       </span>
 
       <h1 className="text-5xl font-bold tracking-tight sm:text-6xl">
-        Safe<span className="text-amber-400">Route</span>
+        <span className="text-amber-400">Raahi</span>
       </h1>
+      <p className="mt-2 text-sm uppercase tracking-[0.3em] text-zinc-500">
+        राही · the traveller&apos;s road companion
+      </p>
 
       <p className="mt-6 max-w-xl text-lg leading-8 text-zinc-300">
         Get warned about potholes, open drains, and flooding on the road ahead —
