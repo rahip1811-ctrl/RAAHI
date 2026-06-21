@@ -38,7 +38,11 @@ export async function GET(request: Request) {
       ? await db.query(
           `select id, type, severity, status,
                   ST_Y(location::geometry) as lat,
-                  ST_X(location::geometry) as lng
+                  ST_X(location::geometry) as lng,
+                  ST_Distance(
+                    location,
+                    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography
+                  ) as distance_m
            from hazards
            where status = 'active'
              and ST_DWithin(
@@ -46,6 +50,7 @@ export async function GET(request: Request) {
                    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
                    $3
                  )
+           order by distance_m
            limit 2000`,
           [lng, lat, Math.min(radius, 30000)]
         )

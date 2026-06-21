@@ -37,10 +37,33 @@ export default function HazardMap() {
   const [loading, setLoading] = useState(true);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
+  const [warningsOn, setWarningsOn] = useState(false);
+  const [nearest, setNearest] = useState<{
+    type: string;
+    severity: string;
+    meters: number;
+  } | null>(null);
+  const watchIdRef = useRef<number | null>(null);
+  const announcedRef = useRef<Set<string>>(new Set());
+  const lastFetchRef = useRef<number>(0);
+  const userMarkerRef = useRef<maplibregl.Marker | null>(null);
 
   useEffect(() => {
     reportModeRef.current = reportMode;
   }, [reportMode]);
+
+  // Stop GPS tracking & any speech when the component unmounts.
+  useEffect(() => {
+    return () => {
+      if (watchIdRef.current !== null)
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      try {
+        window.speechSynthesis?.cancel();
+      } catch {
+        /* no speech support */
+      }
+    };
+  }, []);
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -271,6 +294,104 @@ export default function HazardMap() {
     }
   }
 
+  function speak(text: string) {
+    try {
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    } catch {
+      /* speech not available */
+    }
+  }
+
+  // Called repeatedly as the user's GPS position changes.
+  async function onPosition(pos: GeolocationPosition) {
+    const lat = pos.coords.latitude;
+    const lng = pos.coords.longitude;
+    const map = mapRef.current;
+
+    // Keep a blue dot on the user's live position.
+    if (map) {
+      if (!userMarkerRef.current) {
+        userMarkerRef.current = new maplibregl.Marker({ color: "#2563eb" })
+          .setLngLat([lng, lat])
+          .addTo(map);
+      } else {
+        userMarkerRef.current.setLngLat([lng, lat]);
+      }
+    }
+
+    // Only hit the database every 4 seconds, not on every tiny GPS jiggle.
+    const now = Date.now();
+    if (now - lastFetchRef.current < 4000) return;
+    lastFetchRef.current = now;
+
+    try {
+      const res = await fetch(`/api/hazards?lat=${lat}&lng=${lng}&radius=400`);
+      const data = await res.json();
+      const hazards = (data.hazards ?? []) as Array<{
+        id: string;
+        type: string;
+        severity: string;
+        distance_m: number;
+      }>;
+      const within = hazards
+        .filter((h) => h.distance_m <= 200)
+        .sort((a, b) => a.distance_m - b.distance_m);
+
+      if (within.length === 0) {
+        setNearest(null);
+        return;
+      }
+      const closest = within[0];
+      setNearest({
+        type: closest.type,
+        severity: closest.severity,
+        meters: Math.round(closest.distance_m),
+      });
+
+      // Speak the nearest hazard we haven't announced yet this trip.
+      const fresh = within.find((h) => !announcedRef.current.has(h.id));
+      if (fresh) {
+        announcedRef.current.add(fresh.id);
+        speak(
+          `Warning. ${fresh.type.replace("_", " ")} ahead. ${Math.round(
+            fresh.distance_m
+          )} meters.`
+        );
+      }
+    } catch (err) {
+      console.error("warning lookup failed:", err);
+    }
+  }
+
+  function toggleWarnings() {
+    if (warningsOn) {
+      if (watchIdRef.current !== null)
+        navigator.geolocation.clearWatch(watchIdRef.current);
+      watchIdRef.current = null;
+      announcedRef.current.clear();
+      userMarkerRef.current?.remove();
+      userMarkerRef.current = null;
+      setNearest(null);
+      setWarningsOn(false);
+      return;
+    }
+    if (!navigator.geolocation) {
+      alert("Your browser doesn't support location.");
+      return;
+    }
+    setWarningsOn(true);
+    speak("Live hazard warnings on."); // also unlocks speech (needs a user tap)
+    watchIdRef.current = navigator.geolocation.watchPosition(
+      onPosition,
+      () => {
+        alert("Couldn't track your location. Please allow location access.");
+        setWarningsOn(false);
+      },
+      { enableHighAccuracy: true, maximumAge: 2000, timeout: 10000 }
+    );
+  }
+
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
@@ -301,13 +422,45 @@ export default function HazardMap() {
         </div>
       )}
 
-      {!reportMode && (
-        <button
-          onClick={startReport}
-          className="absolute bottom-6 right-4 z-20 rounded-full bg-amber-400 px-5 py-3 font-semibold text-zinc-950 shadow-lg hover:bg-amber-300"
+      {warningsOn && (
+        <div
+          className={`absolute left-1/2 top-28 z-20 -translate-x-1/2 rounded-xl px-5 py-3 text-center font-semibold shadow-lg ${
+            nearest ? "bg-red-600 text-white" : "bg-zinc-900/90 text-zinc-200"
+          }`}
         >
-          ＋ Report a hazard
-        </button>
+          {nearest ? (
+            <span>
+              ⚠{" "}
+              <span className="capitalize">
+                {nearest.type.replace("_", " ")}
+              </span>{" "}
+              · {nearest.meters} m ahead
+            </span>
+          ) : (
+            "Warnings on · scanning the road ahead…"
+          )}
+        </div>
+      )}
+
+      {!reportMode && (
+        <div className="absolute bottom-6 right-4 z-20 flex flex-col items-end gap-3">
+          <button
+            onClick={toggleWarnings}
+            className={`rounded-full px-5 py-3 font-semibold shadow-lg ${
+              warningsOn
+                ? "bg-red-500 text-white hover:bg-red-400"
+                : "bg-zinc-900/90 text-white hover:bg-zinc-800"
+            }`}
+          >
+            {warningsOn ? "■ Stop warnings" : "🔊 Start warnings"}
+          </button>
+          <button
+            onClick={startReport}
+            className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-zinc-950 shadow-lg hover:bg-amber-300"
+          >
+            ＋ Report a hazard
+          </button>
+        </div>
       )}
 
       {reportMode && (
