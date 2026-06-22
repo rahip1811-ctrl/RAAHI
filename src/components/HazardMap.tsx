@@ -28,6 +28,7 @@ type Hazard = {
   photo_url?: string | null;
   report_count?: number;
   last_reported_at?: string;
+  created_at?: string;
 };
 
 // Shrink a photo in the browser before upload (a pothole pic doesn't need 8MB).
@@ -158,10 +159,10 @@ export default function HazardMap() {
         const hazards: Hazard[] = data.hazards ?? [];
         const now = Date.now();
         const features = hazards.map((h) => {
-          const reported = h.last_reported_at
-            ? new Date(h.last_reported_at).getTime()
+          const created = h.created_at
+            ? new Date(h.created_at).getTime()
             : now;
-          const ageDays = Math.max(0, (now - reported) / 86400000);
+          const ageDays = Math.max(0, (now - created) / 86400000);
           return {
             type: "Feature" as const,
             geometry: { type: "Point" as const, coordinates: [h.lng, h.lat] },
