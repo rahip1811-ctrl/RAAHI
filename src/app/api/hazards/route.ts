@@ -5,7 +5,6 @@ const ALLOWED_TYPES = [
   "pothole",
   "open_drain",
   "waterlogging",
-  "speed_breaker",
   "debris",
 ];
 const ALLOWED_SEVERITY = ["low", "medium", "high"];
@@ -36,7 +35,7 @@ export async function GET(request: Request) {
   try {
     const result = hasArea
       ? await db.query(
-          `select id, type, severity, status,
+          `select id, type, severity, status, photo_url,
                   ST_Y(location::geometry) as lat,
                   ST_X(location::geometry) as lng,
                   ST_Distance(
@@ -55,7 +54,7 @@ export async function GET(request: Request) {
           [lng, lat, Math.min(radius, 30000)]
         )
       : await db.query(
-          `select id, type, severity, status,
+          `select id, type, severity, status, photo_url,
                   ST_Y(location::geometry) as lat,
                   ST_X(location::geometry) as lng
            from hazards
@@ -79,7 +78,7 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = await request.json();
-    const { type, severity, lat, lng } = body ?? {};
+    const { type, severity, lat, lng, photo_url } = body ?? {};
 
     // Validate everything before it touches the database.
     if (!ALLOWED_TYPES.includes(type)) {
@@ -92,13 +91,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Invalid location" }, { status: 400 });
     }
 
+    const photo = typeof photo_url === "string" ? photo_url : null;
+
     const result = await db.query(
-      `insert into hazards (type, severity, location)
-       values ($1, $2, ST_SetSRID(ST_MakePoint($3, $4), 4326))
-       returning id, type, severity, status,
+      `insert into hazards (type, severity, photo_url, location)
+       values ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
+       returning id, type, severity, status, photo_url,
                  ST_Y(location::geometry) as lat,
                  ST_X(location::geometry) as lng`,
-      [type, severity, lng, lat]
+      [type, severity, photo, lng, lat]
     );
 
     return NextResponse.json({ hazard: result.rows[0] }, { status: 201 });

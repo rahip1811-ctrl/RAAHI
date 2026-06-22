@@ -1,6 +1,12 @@
 "use client";
 
-import { useEffect, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type FormEvent,
+  type ChangeEvent,
+} from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -10,7 +16,6 @@ const HAZARD_TYPES = [
   { value: "pothole", label: "Pothole" },
   { value: "open_drain", label: "Open drain" },
   { value: "waterlogging", label: "Waterlogging" },
-  { value: "speed_breaker", label: "Speed breaker" },
   { value: "debris", label: "Debris" },
 ];
 
@@ -20,7 +25,43 @@ type Hazard = {
   severity: "low" | "medium" | "high";
   lat: number;
   lng: number;
+  photo_url?: string | null;
 };
+
+// Shrink a photo in the browser before upload (a pothole pic doesn't need 8MB).
+async function shrinkImage(file: File, maxDim = 1280, quality = 0.7): Promise<Blob> {
+  const dataUrl: string = await new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+  const img: HTMLImageElement = await new Promise((res, rej) => {
+    const i = new Image();
+    i.onload = () => res(i);
+    i.onerror = rej;
+    i.src = dataUrl;
+  });
+  let { width, height } = img;
+  if (width > height && width > maxDim) {
+    height = Math.round((height * maxDim) / width);
+    width = maxDim;
+  } else if (height > maxDim) {
+    width = Math.round((width * maxDim) / height);
+    height = maxDim;
+  }
+  const canvas = document.createElement("canvas");
+  canvas.width = width;
+  canvas.height = height;
+  canvas.getContext("2d")?.drawImage(img, 0, 0, width, height);
+  return new Promise((res, rej) =>
+    canvas.toBlob(
+      (b) => (b ? res(b) : rej(new Error("toBlob failed"))),
+      "image/jpeg",
+      quality
+    )
+  );
+}
 
 export default function HazardMap() {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -35,6 +76,8 @@ export default function HazardMap() {
   const [severity, setSeverity] = useState("medium");
   const [submitting, setSubmitting] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploading, setUploading] = useState(false);
   const [query, setQuery] = useState("");
   const [searching, setSearching] = useState(false);
   const [warningsOn, setWarningsOn] = useState(false);
@@ -56,6 +99,7 @@ export default function HazardMap() {
     owned: boolean;
     lng: number;
     lat: number;
+    photoUrl: string | null;
   } | null>(null);
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState("pothole");
@@ -118,6 +162,7 @@ export default function HazardMap() {
             severity: h.severity,
             lng: h.lng,
             lat: h.lat,
+            photo_url: h.photo_url ?? "",
           },
         }));
         const source = map.getSource("hazards") as
@@ -179,6 +224,7 @@ export default function HazardMap() {
         severity?: string;
         lng?: number;
         lat?: number;
+        photo_url?: string;
       };
       if (!p.id) return;
       setSelected({
@@ -188,6 +234,7 @@ export default function HazardMap() {
         owned: sessionReportsRef.current.has(p.id),
         lng: Number(p.lng),
         lat: Number(p.lat),
+        photoUrl: p.photo_url ? p.photo_url : null,
       });
     });
     map.on("mouseenter", "hazard-points", () => {
@@ -233,6 +280,7 @@ export default function HazardMap() {
   function cancelReport() {
     setReportMode(false);
     setDraft(null);
+    setPhotoUrl(null);
   }
   function useMyLocation() {
     if (!navigator.geolocation) {
@@ -291,6 +339,26 @@ export default function HazardMap() {
     }
   }
 
+  async function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const shrunk = await shrinkImage(file);
+      const form = new FormData();
+      form.append("file", shrunk, "photo.jpg");
+      const res = await fetch("/api/upload", { method: "POST", body: form });
+      if (!res.ok) throw new Error("upload failed");
+      const data = await res.json();
+      setPhotoUrl(data.url);
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't upload the photo. You can still submit without it.");
+    } finally {
+      setUploading(false);
+    }
+  }
+
   async function submitReport() {
     if (!draft) return;
     setSubmitting(true);
@@ -298,13 +366,20 @@ export default function HazardMap() {
       const res = await fetch("/api/hazards", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ type, severity, lat: draft.lat, lng: draft.lng }),
+        body: JSON.stringify({
+          type,
+          severity,
+          lat: draft.lat,
+          lng: draft.lng,
+          photo_url: photoUrl,
+        }),
       });
       if (!res.ok) throw new Error("save failed");
       const data = await res.json();
       if (data?.hazard?.id) sessionReportsRef.current.add(data.hazard.id);
       setReportMode(false);
       setDraft(null);
+      setPhotoUrl(null);
       reloadRef.current();
     } catch (err) {
       console.error(err);
@@ -591,10 +666,34 @@ export default function HazardMap() {
                   <option value="high">High</option>
                 </select>
               </label>
+              <div>
+                <label className="block text-sm">
+                  Photo (optional)
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhoto}
+                    className="mt-1 block w-full text-xs text-zinc-300"
+                  />
+                </label>
+                {uploading && (
+                  <p className="mt-1 text-xs text-zinc-400">Uploading photo…</p>
+                )}
+                {photoUrl && (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={photoUrl}
+                    alt="hazard"
+                    className="mt-2 h-20 w-20 rounded object-cover"
+                  />
+                )}
+              </div>
+
               <div className="flex gap-2 pt-1">
                 <button
                   onClick={submitReport}
-                  disabled={submitting}
+                  disabled={submitting || uploading}
                   className="flex-1 rounded-lg bg-amber-400 px-4 py-2 font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-60"
                 >
                   {submitting ? "Saving…" : "Submit hazard"}
@@ -634,6 +733,14 @@ export default function HazardMap() {
                   ✕
                 </button>
               </div>
+              {selected.photoUrl && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={selected.photoUrl}
+                  alt="hazard"
+                  className="max-h-48 w-full rounded-lg object-cover"
+                />
+              )}
               <div className="flex gap-2">
                 <button
                   onClick={openEdit}

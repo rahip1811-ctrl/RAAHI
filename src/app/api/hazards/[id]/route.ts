@@ -5,7 +5,6 @@ const ALLOWED_TYPES = [
   "pothole",
   "open_drain",
   "waterlogging",
-  "speed_breaker",
   "debris",
 ];
 const ALLOWED_SEVERITY = ["low", "medium", "high"];
