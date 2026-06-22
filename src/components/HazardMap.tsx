@@ -27,6 +27,7 @@ type Hazard = {
   lng: number;
   photo_url?: string | null;
   report_count?: number;
+  last_reported_at?: string;
 };
 
 // Shrink a photo in the browser before upload (a pothole pic doesn't need 8MB).
@@ -155,19 +156,27 @@ export default function HazardMap() {
         const res = await fetch(`/api/hazards`);
         const data = await res.json();
         const hazards: Hazard[] = data.hazards ?? [];
-        const features = hazards.map((h) => ({
-          type: "Feature" as const,
-          geometry: { type: "Point" as const, coordinates: [h.lng, h.lat] },
-          properties: {
-            id: h.id,
-            type: h.type,
-            severity: h.severity,
-            lng: h.lng,
-            lat: h.lat,
-            photo_url: h.photo_url ?? "",
-            report_count: h.report_count ?? 1,
-          },
-        }));
+        const now = Date.now();
+        const features = hazards.map((h) => {
+          const reported = h.last_reported_at
+            ? new Date(h.last_reported_at).getTime()
+            : now;
+          const ageDays = Math.max(0, (now - reported) / 86400000);
+          return {
+            type: "Feature" as const,
+            geometry: { type: "Point" as const, coordinates: [h.lng, h.lat] },
+            properties: {
+              id: h.id,
+              type: h.type,
+              severity: h.severity,
+              lng: h.lng,
+              lat: h.lat,
+              photo_url: h.photo_url ?? "",
+              report_count: h.report_count ?? 1,
+              age_days: ageDays,
+            },
+          };
+        });
         const source = map.getSource("hazards") as
           | maplibregl.GeoJSONSource
           | undefined;
@@ -204,6 +213,25 @@ export default function HazardMap() {
           ],
           "circle-stroke-width": 1.5,
           "circle-stroke-color": "#0f172a",
+          // Fade hazards as they go un-confirmed: bright at <=3 days, faint by 7.
+          "circle-opacity": [
+            "interpolate",
+            ["linear"],
+            ["get", "age_days"],
+            3,
+            1,
+            7,
+            0.3,
+          ],
+          "circle-stroke-opacity": [
+            "interpolate",
+            ["linear"],
+            ["get", "age_days"],
+            3,
+            1,
+            7,
+            0.3,
+          ],
         },
       });
       loadHazards();

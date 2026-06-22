@@ -35,7 +35,7 @@ export async function GET(request: Request) {
   try {
     const result = hasArea
       ? await db.query(
-          `select id, type, severity, status, photo_url, report_count,
+          `select id, type, severity, status, photo_url, report_count, last_reported_at,
                   ST_Y(location::geometry) as lat,
                   ST_X(location::geometry) as lng,
                   ST_Distance(
@@ -54,7 +54,7 @@ export async function GET(request: Request) {
           [lng, lat, Math.min(radius, 30000)]
         )
       : await db.query(
-          `select id, type, severity, status, photo_url, report_count,
+          `select id, type, severity, status, photo_url, report_count, last_reported_at,
                   ST_Y(location::geometry) as lat,
                   ST_X(location::geometry) as lng
            from hazards
@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     const dup = await db.query(
       `select id from hazards
        where type = $1 and status = 'active'
+         and last_reported_at >= now() - interval '7 days'
          and ST_DWithin(
                location,
                ST_SetSRID(ST_MakePoint($2, $3), 4326)::geography,
@@ -113,9 +114,10 @@ export async function POST(request: Request) {
 
     if (dup.rows.length > 0) {
       const bumped = await db.query(
-        `update hazards set report_count = report_count + 1
+        `update hazards set report_count = report_count + 1,
+                            last_reported_at = now()
          where id = $1
-         returning id, type, severity, status, photo_url, report_count,
+         returning id, type, severity, status, photo_url, report_count, last_reported_at,
                    ST_Y(location::geometry) as lat,
                    ST_X(location::geometry) as lng`,
         [dup.rows[0].id]
@@ -129,7 +131,7 @@ export async function POST(request: Request) {
     const result = await db.query(
       `insert into hazards (type, severity, photo_url, location)
        values ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
-       returning id, type, severity, status, photo_url, report_count,
+       returning id, type, severity, status, photo_url, report_count, last_reported_at,
                  ST_Y(location::geometry) as lat,
                  ST_X(location::geometry) as lng`,
       [type, severity, photo, lng, lat]
