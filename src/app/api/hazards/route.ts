@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getSessionUser } from "@/lib/auth";
 
 const ALLOWED_TYPES = [
   "pothole",
@@ -79,6 +80,14 @@ export async function GET(request: Request) {
 // Body: { type, severity, lat, lng }
 export async function POST(request: Request) {
   try {
+    const session = await getSessionUser();
+    if (!session) {
+      return NextResponse.json(
+        { error: "Please log in to report a hazard" },
+        { status: 401 }
+      );
+    }
+
     const body = await request.json();
     const { type, severity, lat, lng, photo_url } = body ?? {};
 
@@ -131,12 +140,12 @@ export async function POST(request: Request) {
     }
 
     const result = await db.query(
-      `insert into hazards (type, severity, photo_url, location)
-       values ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326))
+      `insert into hazards (type, severity, photo_url, location, reporter_id)
+       values ($1, $2, $3, ST_SetSRID(ST_MakePoint($4, $5), 4326), $6)
        returning id, type, severity, status, photo_url, report_count, last_reported_at, created_at,
                  ST_Y(location::geometry) as lat,
                  ST_X(location::geometry) as lng`,
-      [type, severity, photo, lng, lat]
+      [type, severity, photo, lng, lat, session.uid]
     );
 
     return NextResponse.json(

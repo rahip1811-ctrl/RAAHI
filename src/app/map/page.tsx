@@ -1,5 +1,6 @@
 import Link from "next/link";
 import HazardMap from "@/components/HazardMap";
+import AuthStatus from "@/components/AuthStatus";
 
 export default function MapPage() {
   return (
@@ -14,9 +15,7 @@ export default function MapPage() {
         >
           ← Raahi
         </Link>
-        <div className="pointer-events-auto rounded-full bg-zinc-900/90 px-4 py-2 text-xs text-white shadow">
-          Tap a dot for details
-        </div>
+        <AuthStatus />
       </div>
 
       {/* Legend */}

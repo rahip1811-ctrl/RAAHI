@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ChangeEvent } from "react";
+import { useRouter } from "next/navigation";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
@@ -83,6 +84,8 @@ export default function HazardMap() {
   const [loading, setLoading] = useState(true);
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
+  const [loggedIn, setLoggedIn] = useState(false);
+  const router = useRouter();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -115,6 +118,14 @@ export default function HazardMap() {
   useEffect(() => {
     reportModeRef.current = reportMode;
   }, [reportMode]);
+
+  // Know whether the visitor is logged in (gates reporting).
+  useEffect(() => {
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((d) => setLoggedIn(!!d.user))
+      .catch(() => {});
+  }, []);
 
   // Stop GPS tracking & any speech when the component unmounts.
   useEffect(() => {
@@ -205,6 +216,8 @@ export default function HazardMap() {
             },
           };
         });
+        // Bail if this map instance was replaced/removed (dev hot-reload).
+        if (mapRef.current !== map) return;
         const source = map.getSource("hazards") as
           | maplibregl.GeoJSONSource
           | undefined;
@@ -335,6 +348,10 @@ export default function HazardMap() {
   }, [draft]);
 
   function startReport() {
+    if (!loggedIn) {
+      router.push("/login");
+      return;
+    }
     setReportMode(true);
     setDraft(null);
   }
@@ -424,6 +441,10 @@ export default function HazardMap() {
           photo_url: photoUrl,
         }),
       });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
       if (!res.ok) throw new Error("save failed");
       const data = await res.json();
       if (data?.hazard?.id) sessionReportsRef.current.add(data.hazard.id);
