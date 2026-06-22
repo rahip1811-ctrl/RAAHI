@@ -26,6 +26,7 @@ type Hazard = {
   lat: number;
   lng: number;
   photo_url?: string | null;
+  report_count?: number;
 };
 
 // Shrink a photo in the browser before upload (a pothole pic doesn't need 8MB).
@@ -100,6 +101,7 @@ export default function HazardMap() {
     lng: number;
     lat: number;
     photoUrl: string | null;
+    reportCount: number;
   } | null>(null);
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState("pothole");
@@ -163,6 +165,7 @@ export default function HazardMap() {
             lng: h.lng,
             lat: h.lat,
             photo_url: h.photo_url ?? "",
+            report_count: h.report_count ?? 1,
           },
         }));
         const source = map.getSource("hazards") as
@@ -225,6 +228,7 @@ export default function HazardMap() {
         lng?: number;
         lat?: number;
         photo_url?: string;
+        report_count?: number;
       };
       if (!p.id) return;
       setSelected({
@@ -235,6 +239,7 @@ export default function HazardMap() {
         lng: Number(p.lng),
         lat: Number(p.lat),
         photoUrl: p.photo_url ? p.photo_url : null,
+        reportCount: Number(p.report_count) || 1,
       });
     });
     map.on("mouseenter", "hazard-points", () => {
@@ -377,6 +382,11 @@ export default function HazardMap() {
       if (!res.ok) throw new Error("save failed");
       const data = await res.json();
       if (data?.hazard?.id) sessionReportsRef.current.add(data.hazard.id);
+      if (data?.duplicate) {
+        alert(
+          "Thanks! A hazard was already reported at this spot — we counted yours as a confirmation."
+        );
+      }
       setReportMode(false);
       setDraft(null);
       setPhotoUrl(null);
@@ -721,6 +731,10 @@ export default function HazardMap() {
                   </p>
                   <p className="text-sm capitalize text-zinc-400">
                     Severity: {selected.severity}
+                  </p>
+                  <p className="text-xs text-zinc-500">
+                    ✅ Reported by {selected.reportCount}{" "}
+                    {selected.reportCount === 1 ? "person" : "people"}
                   </p>
                 </div>
                 <button
