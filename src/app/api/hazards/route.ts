@@ -44,6 +44,7 @@ export async function GET(request: Request) {
                   ) as distance_m
            from hazards
            where status = 'active'
+             and last_reported_at >= now() - interval '7 days'
              and ST_DWithin(
                    location,
                    ST_SetSRID(ST_MakePoint($1, $2), 4326)::geography,
@@ -59,6 +60,7 @@ export async function GET(request: Request) {
                   ST_X(location::geometry) as lng
            from hazards
            where status = 'active'
+             and last_reported_at >= now() - interval '7 days'
            order by created_at desc
            limit 5000`
         );
