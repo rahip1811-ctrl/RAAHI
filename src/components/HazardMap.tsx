@@ -1,16 +1,18 @@
 "use client";
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  type FormEvent,
-  type ChangeEvent,
-} from "react";
+import { useEffect, useRef, useState, type ChangeEvent } from "react";
 import maplibregl from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
 
 const START = { lng: 72.5714, lat: 23.0225, zoom: 12 };
+
+type Suggestion = {
+  description: string;
+  mainText: string;
+  secondaryText: string;
+  lat: number | null;
+  lng: number | null;
+};
 
 const HAZARD_TYPES = [
   { value: "pothole", label: "Pothole" },
@@ -82,7 +84,8 @@ export default function HazardMap() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [query, setQuery] = useState("");
-  const [searching, setSearching] = useState(false);
+  const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [warningsOn, setWarningsOn] = useState(false);
   const [nearest, setNearest] = useState<{
     type: string;
@@ -129,26 +132,50 @@ export default function HazardMap() {
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
+    const OLA_KEY = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
+
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: {
-        version: 8,
-        sources: {
-          osm: {
-            type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-            tileSize: 256,
-            maxzoom: 19, // OSM only has tiles up to z19; beyond this, stretch them
-            attribution: "© OpenStreetMap contributors",
+      // Use Ola Maps' India-rich vector tiles if a key is present; otherwise
+      // fall back to free OpenStreetMap raster tiles.
+      style: OLA_KEY
+        ? "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json"
+        : {
+            version: 8,
+            sources: {
+              osm: {
+                type: "raster",
+                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                tileSize: 256,
+                maxzoom: 19,
+                attribution: "© OpenStreetMap contributors",
+              },
+            },
+            layers: [{ id: "osm", type: "raster", source: "osm" }],
           },
-        },
-        layers: [{ id: "osm", type: "raster", source: "osm" }],
-      },
       center: [START.lng, START.lat],
       zoom: START.zoom,
+      // Ola requires the api_key on every tile/style/sprite/glyph request.
+      transformRequest: (url: string) => {
+        if (OLA_KEY && url.includes("olamaps.io")) {
+          const u = new URL(url);
+          if (!u.searchParams.has("api_key"))
+            u.searchParams.set("api_key", OLA_KEY);
+          return { url: u.toString() };
+        }
+        return { url };
+      },
     });
     mapRef.current = map;
     map.addControl(new maplibregl.NavigationControl(), "top-right");
+
+    // The Ola style references a "3d_model" layer not in the free tiles —
+    // harmless. Swallow that one warning, still log any real errors.
+    map.on("error", (e) => {
+      const msg = (e && e.error && e.error.message) || "";
+      if (msg.includes("3d_model")) return;
+      console.error("map error:", e?.error ?? e);
+    });
 
     // Load ALL active hazards once. Simple and snappy for current data volumes.
     async function loadHazards() {
@@ -330,47 +357,36 @@ export default function HazardMap() {
       () => alert("Couldn't get your location. You can tap the map instead.")
     );
   }
-  async function search(e: FormEvent) {
-    e.preventDefault();
-    if (!query.trim()) return;
-    setSearching(true);
-    try {
-      const map = mapRef.current;
-      // Bias results toward whatever area is currently on screen.
-      let viewbox = "";
-      if (map) {
-        const b = map.getBounds();
-        viewbox = `&viewbox=${b.getWest()},${b.getNorth()},${b.getEast()},${b.getSouth()}`;
-      }
-      // Add city context if the user didn't include one.
-      const q = query.trim();
-      const full = /ahmedabad|gujarat/i.test(q) ? q : `${q}, Ahmedabad`;
-      // Free OpenStreetMap geocoding (Nominatim).
-      const res = await fetch(
-        `https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=in${viewbox}&q=${encodeURIComponent(
-          full
-        )}`
-      );
-      const results = await res.json();
-      if (!results.length) {
-        alert(
-          "Couldn't find that. Try a nearby landmark, road, or area name, then drag the pin to the exact spot."
-        );
-        return;
-      }
-      const coords = {
-        lat: parseFloat(results[0].lat),
-        lng: parseFloat(results[0].lon),
-      };
-      mapRef.current?.flyTo({ center: [coords.lng, coords.lat], zoom: 16 });
-      // If we're reporting, drop the pin there so the user can fine-tune.
-      if (reportModeRef.current) setDraft(coords);
-    } catch (err) {
-      console.error(err);
-      alert("Search failed. Please try again.");
-    } finally {
-      setSearching(false);
+  function onSearchChange(value: string) {
+    setQuery(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    if (value.trim().length < 2) {
+      setSuggestions([]);
+      return;
     }
+    // Debounce: wait 300ms after the last keystroke before asking the server.
+    searchTimerRef.current = setTimeout(async () => {
+      try {
+        const c = mapRef.current?.getCenter();
+        const loc = c ? `&lat=${c.lat}&lng=${c.lng}` : "";
+        const res = await fetch(
+          `/api/places?input=${encodeURIComponent(value)}${loc}`
+        );
+        const data = await res.json();
+        setSuggestions(data.suggestions ?? []);
+      } catch (err) {
+        console.error("search failed:", err);
+      }
+    }, 300);
+  }
+
+  function selectSuggestion(s: Suggestion) {
+    setSuggestions([]);
+    setQuery(s.description);
+    if (s.lat == null || s.lng == null) return;
+    mapRef.current?.flyTo({ center: [s.lng, s.lat], zoom: 16 });
+    // If we're reporting, drop the pin there so the user can fine-tune.
+    if (reportModeRef.current) setDraft({ lng: s.lng, lat: s.lat });
   }
 
   async function handlePhoto(e: ChangeEvent<HTMLInputElement>) {
@@ -586,25 +602,34 @@ export default function HazardMap() {
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
 
-      {/* Search box: jump to an area, landmark, or address */}
-      <form
-        onSubmit={search}
-        className="absolute left-1/2 top-16 z-20 flex w-[min(92%,440px)] -translate-x-1/2 gap-2"
-      >
+      {/* Search box with live apartment/area autocomplete */}
+      <div className="absolute left-1/2 top-16 z-20 w-[min(92%,440px)] -translate-x-1/2">
         <input
           value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          placeholder="Search area, landmark or address…"
-          className="flex-1 rounded-full bg-white/95 px-4 py-2 text-sm text-zinc-900 shadow outline-none"
+          onChange={(e) => onSearchChange(e.target.value)}
+          placeholder="Search apartment, area or landmark…"
+          className="w-full rounded-full bg-white/95 px-4 py-2 text-sm text-zinc-900 shadow outline-none"
         />
-        <button
-          type="submit"
-          disabled={searching}
-          className="rounded-full bg-zinc-900/90 px-4 py-2 text-sm font-semibold text-white shadow disabled:opacity-60"
-        >
-          {searching ? "…" : "Search"}
-        </button>
-      </form>
+        {suggestions.length > 0 && (
+          <ul className="mt-1 max-h-72 overflow-auto rounded-xl bg-white shadow-lg">
+            {suggestions.map((s, i) => (
+              <li key={i}>
+                <button
+                  onClick={() => selectSuggestion(s)}
+                  className="block w-full px-4 py-2 text-left text-sm hover:bg-zinc-100"
+                >
+                  <span className="font-medium text-zinc-900">{s.mainText}</span>
+                  {s.secondaryText && (
+                    <span className="block text-xs text-zinc-500">
+                      {s.secondaryText}
+                    </span>
+                  )}
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
 
       {loading && (
         <div className="absolute left-1/2 top-4 z-20 -translate-x-1/2 rounded-full bg-zinc-900/90 px-4 py-1.5 text-xs text-white shadow">
