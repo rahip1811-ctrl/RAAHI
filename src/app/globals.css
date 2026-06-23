@@ -1,26 +1,205 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
+/*
+  RAAHI design system — matched to the SafeRoute-style mockups.
+  Green brand + dark navy base, red/amber/green traffic-signal severity.
+  Two themes (light default, dark) driven by [data-theme] on <html>.
+*/
+
+/* ── LIGHT (default) ─────────────────────────────────────────── */
+:root,
+[data-theme="light"] {
+  --bg: #f5f7fb;
+  --bg-2: #eef2f8;
+  --surface: #ffffff;
+  --surface-2: #f1f4f9;
+  --surface-3: #e9eef5;
+  --border: #e2e8f1;
+  --border-soft: #edf1f7;
+
+  --text: #0f1722;
+  --text-muted: #5a6675;
+  --text-faint: #8b95a4;
+
+  --brand: #10b981;
+  --brand-2: #34d399;
+  --brand-strong: #059669;
+  --brand-ink: #04130d;
+  --brand-soft: rgba(16, 185, 129, 0.12);
+
+  --danger: #ef4444;
+  --danger-soft: rgba(239, 68, 68, 0.12);
+  --caution: #f59e0b;
+  --caution-soft: rgba(245, 158, 11, 0.14);
+  --clear: #16c172;
+  --clear-soft: rgba(22, 193, 114, 0.14);
+  --route: #2f6bff;
+
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow: 0 1px 3px rgba(16, 24, 40, 0.08), 0 10px 28px rgba(16, 24, 40, 0.07);
+  --shadow-lg: 0 18px 48px rgba(16, 24, 40, 0.16);
+
+  color-scheme: light;
+}
+
+/* ── DARK ────────────────────────────────────────────────────── */
+[data-theme="dark"] {
+  --bg: #080b11;
+  --bg-2: #0c1018;
+  --surface: #121826;
+  --surface-2: #1a2130;
+  --surface-3: #232c3d;
+  --border: #232c3b;
+  --border-soft: #1a2130;
+
+  --text: #f2f6fc;
+  --text-muted: #98a2b4;
+  --text-faint: #5e6b7e;
+
+  --brand: #18d28c;
+  --brand-2: #34d399;
+  --brand-strong: #10b981;
+  --brand-ink: #04130d;
+  --brand-soft: rgba(24, 210, 140, 0.14);
+
+  --danger: #ff5151;
+  --danger-soft: rgba(255, 81, 81, 0.16);
+  --caution: #f7a82b;
+  --caution-soft: rgba(247, 168, 43, 0.16);
+  --clear: #27d586;
+  --clear-soft: rgba(39, 213, 134, 0.16);
+  --route: #4d82ff;
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --shadow: 0 1px 3px rgba(0, 0, 0, 0.45), 0 14px 34px rgba(0, 0, 0, 0.4);
+  --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.55);
+
+  color-scheme: dark;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+  --color-background: var(--bg);
+  --color-foreground: var(--text);
+  --font-sans: var(--font-body);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
+* {
+  border-color: var(--border);
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-body), system-ui, sans-serif;
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+.font-display {
+  font-family: var(--font-body), system-ui, sans-serif;
+  letter-spacing: -0.025em;
+  font-weight: 800;
+}
+
+.font-deva {
+  font-family: var(--font-deva), var(--font-body), sans-serif;
+}
+
+/* ── reusable primitives ─────────────────────────────────────── */
+.r-card {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  box-shadow: var(--shadow-sm);
+}
+
+.r-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 9999px;
+  padding: 0.2rem 0.6rem;
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.btn-press {
+  transition: transform 0.06s ease, background-color 0.15s ease,
+    border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
+}
+.btn-press:active {
+  transform: translateY(1px) scale(0.99);
+}
+
+/* live pulse dot */
+.live-dot {
+  position: relative;
+  width: 8px;
+  height: 8px;
+  border-radius: 9999px;
+  background: var(--clear);
+  flex: none;
+}
+.live-dot::after {
+  content: "";
+  position: absolute;
+  inset: -4px;
+  border-radius: 9999px;
+  border: 1.5px solid var(--clear);
+  opacity: 0.55;
+  animation: ping 1.8s cubic-bezier(0, 0, 0.2, 1) infinite;
+}
+@keyframes ping {
+  75%,
+  100% {
+    transform: scale(2);
+    opacity: 0;
+  }
+}
+
+/* expanding proximity ring (Drive HUD) */
+@keyframes radar {
+  0% {
+    transform: scale(0.3);
+    opacity: 0.9;
+  }
+  100% {
+    transform: scale(1);
+    opacity: 0;
+  }
+}
+
+/* faint map grid backdrop */
+.map-grid {
+  background-image:
+    linear-gradient(var(--border-soft) 1px, transparent 1px),
+    linear-gradient(90deg, var(--border-soft) 1px, transparent 1px);
+  background-size: 44px 44px;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* tidy scrollbars in feeds */
+.thin-scroll::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 9999px;
 }

@@ -21,12 +21,9 @@ export default function AuthStatus() {
       .finally(() => setLoaded(true));
   }, []);
 
-  // Close the dropdown when clicking outside it.
   useEffect(() => {
     function onClick(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
     }
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -45,7 +42,13 @@ export default function AuthStatus() {
     return (
       <Link
         href="/login"
-        className="pointer-events-auto rounded-full bg-zinc-900/90 px-4 py-2 text-sm font-semibold text-white shadow"
+        className="btn-press pointer-events-auto rounded-full border px-4 py-2 text-sm font-semibold"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          color: "var(--text)",
+          boxShadow: "var(--shadow)",
+        }}
       >
         Log in
       </Link>
@@ -59,43 +62,61 @@ export default function AuthStatus() {
     <div ref={ref} className="pointer-events-auto relative">
       <button
         onClick={() => setOpen((v) => !v)}
-        className="flex items-center gap-2 rounded-full bg-zinc-900/90 py-1.5 pl-1.5 pr-3 text-sm text-white shadow"
+        className="btn-press flex items-center gap-2 rounded-full border py-1.5 pl-1.5 pr-3 text-sm"
+        style={{
+          background: "var(--surface)",
+          borderColor: "var(--border)",
+          color: "var(--text)",
+          boxShadow: "var(--shadow)",
+        }}
       >
-        <span className="flex h-7 w-7 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-zinc-950">
+        <span
+          className="flex h-7 w-7 items-center justify-center rounded-full text-sm font-bold"
+          style={{ background: "var(--brand)", color: "var(--brand-ink)" }}
+        >
           {initial}
         </span>
         <span className="max-w-[120px] truncate font-medium">{displayName}</span>
       </button>
 
       {open && (
-        <div className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border border-zinc-200 bg-white text-zinc-900 shadow-2xl">
+        <div
+          className="absolute right-0 mt-2 w-60 overflow-hidden rounded-xl border"
+          style={{
+            background: "var(--surface)",
+            borderColor: "var(--border)",
+            color: "var(--text)",
+            boxShadow: "var(--shadow-lg)",
+          }}
+        >
           <div className="flex items-center gap-3 p-4">
-            <span className="flex h-10 w-10 items-center justify-center rounded-full bg-amber-400 text-base font-bold text-zinc-950">
+            <span
+              className="flex h-10 w-10 items-center justify-center rounded-full text-base font-bold"
+              style={{ background: "var(--brand)", color: "var(--brand-ink)" }}
+            >
               {initial}
             </span>
             <div className="min-w-0">
               <div className="truncate font-semibold">{displayName}</div>
-              <div className="truncate text-xs text-zinc-500">{user.email}</div>
+              <div className="truncate text-xs" style={{ color: "var(--text-muted)" }}>
+                {user.email}
+              </div>
             </div>
           </div>
-          <div className="border-t border-zinc-100">
-            <Link
-              href="/dashboard"
-              onClick={() => setOpen(false)}
-              className="block px-4 py-3 text-sm hover:bg-zinc-50"
-            >
-              📊 Dashboard
+          <div className="border-t" style={{ borderColor: "var(--border)" }}>
+            <Link href="/app/profile" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm">
+              Profile
             </Link>
-            <Link
-              href="/leaderboard"
-              onClick={() => setOpen(false)}
-              className="block px-4 py-3 text-sm hover:bg-zinc-50"
-            >
-              🏆 Leaderboard
+            <Link href="/dashboard" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm">
+              Command Center
+            </Link>
+            <Link href="/leaderboard" onClick={() => setOpen(false)} className="block px-4 py-3 text-sm">
+              Leaderboard
             </Link>
             <button
               onClick={logout}
-              className="block w-full px-4 py-3 text-left text-sm font-medium text-red-600 hover:bg-zinc-50"
+              className="block w-full px-4 py-3 text-left text-sm font-medium"
+              style={{ color: "var(--danger)" }}
             >
               Sign out
             </button>
