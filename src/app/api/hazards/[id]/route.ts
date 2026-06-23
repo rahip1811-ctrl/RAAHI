@@ -1,12 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-const ALLOWED_TYPES = [
-  "pothole",
-  "open_drain",
-  "waterlogging",
-  "debris",
-];
+const ALLOWED_TYPES = ["pothole", "debris", "construction"];
 const ALLOWED_SEVERITY = ["low", "medium", "high"];
 
 // PATCH /api/hazards/:id  -> update type/severity of a hazard

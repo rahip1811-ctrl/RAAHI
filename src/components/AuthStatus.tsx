@@ -80,6 +80,13 @@ export default function AuthStatus() {
           </div>
           <div className="border-t border-zinc-100">
             <Link
+              href="/dashboard"
+              onClick={() => setOpen(false)}
+              className="block px-4 py-3 text-sm hover:bg-zinc-50"
+            >
+              📊 Dashboard
+            </Link>
+            <Link
               href="/leaderboard"
               onClick={() => setOpen(false)}
               className="block px-4 py-3 text-sm hover:bg-zinc-50"

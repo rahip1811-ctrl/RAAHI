@@ -25,8 +25,7 @@ export default function MapPage() {
           <span className="inline-block h-3 w-3 rounded-full bg-red-500" /> High
         </div>
         <div className="flex items-center gap-2">
-          <span className="inline-block h-3 w-3 rounded-full bg-amber-500" />{" "}
-          Medium
+          <span className="inline-block h-3 w-3 rounded-full bg-amber-500" /> Medium
         </div>
         <div className="flex items-center gap-2">
           <span className="inline-block h-3 w-3 rounded-full bg-green-500" /> Low

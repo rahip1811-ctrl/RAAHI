@@ -17,10 +17,14 @@ type Suggestion = {
 
 const HAZARD_TYPES = [
   { value: "pothole", label: "Pothole" },
-  { value: "open_drain", label: "Open drain" },
-  { value: "waterlogging", label: "Waterlogging" },
   { value: "debris", label: "Debris" },
+  { value: "construction", label: "Construction / dig-up" },
 ];
+
+// Dot colour = severity (the only thing the map encodes).
+function sevColor(s: string) {
+  return s === "high" ? "#ef4444" : s === "medium" ? "#f59e0b" : "#22c55e";
+}
 
 type Hazard = {
   id: string;
@@ -75,6 +79,7 @@ export default function HazardMap() {
   const reloadRef = useRef<() => void>(() => {});
   const reportModeRef = useRef(false);
   const draftMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const hazardMarkersRef = useRef<maplibregl.Marker[]>([]);
 
   const [reportMode, setReportMode] = useState(false);
   const [draft, setDraft] = useState<{ lng: number; lat: number } | null>(null);
@@ -85,6 +90,8 @@ export default function HazardMap() {
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
+  const [myUid, setMyUid] = useState<string | null>(null);
+  const [myIsAdmin, setMyIsAdmin] = useState(false);
   const router = useRouter();
   const [query, setQuery] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
@@ -114,6 +121,19 @@ export default function HazardMap() {
   const [editing, setEditing] = useState(false);
   const [editType, setEditType] = useState("pothole");
   const [editSeverity, setEditSeverity] = useState("medium");
+  const [comments, setComments] = useState<
+    {
+      id: string;
+      body: string;
+      author: string;
+      created_at: string;
+      user_id: string | null;
+    }[]
+  >([]);
+  const [newComment, setNewComment] = useState("");
+  const [postingComment, setPostingComment] = useState(false);
+  const [editingCommentId, setEditingCommentId] = useState<string | null>(null);
+  const [editCommentText, setEditCommentText] = useState("");
 
   useEffect(() => {
     reportModeRef.current = reportMode;
@@ -123,9 +143,32 @@ export default function HazardMap() {
   useEffect(() => {
     fetch("/api/auth/me")
       .then((r) => r.json())
-      .then((d) => setLoggedIn(!!d.user))
+      .then((d) => {
+        setLoggedIn(!!d.user);
+        setMyUid(d.user?.uid ?? null);
+        setMyIsAdmin(!!d.user?.is_admin);
+      })
       .catch(() => {});
   }, []);
+
+  // Load comments whenever a different hazard is opened.
+  useEffect(() => {
+    const id = selected?.id;
+    if (!id) {
+      setComments([]);
+      return;
+    }
+    let active = true;
+    fetch(`/api/hazards/${id}/comments`)
+      .then((r) => r.json())
+      .then((d) => {
+        if (active) setComments(d.comments ?? []);
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, [selected?.id]);
 
   // Stop GPS tracking & any speech when the component unmounts.
   useEffect(() => {
@@ -195,33 +238,53 @@ export default function HazardMap() {
         const res = await fetch(`/api/hazards`);
         const data = await res.json();
         const hazards: Hazard[] = data.hazards ?? [];
+        // Bail if this map instance was replaced/removed (dev hot-reload).
+        if (mapRef.current !== map) return;
+
+        // Clear previous hazard markers.
+        hazardMarkersRef.current.forEach((m) => m.remove());
+        hazardMarkersRef.current = [];
+
         const now = Date.now();
-        const features = hazards.map((h) => {
+        for (const h of hazards) {
           const created = h.created_at
             ? new Date(h.created_at).getTime()
             : now;
           const ageDays = Math.max(0, (now - created) / 86400000);
-          return {
-            type: "Feature" as const,
-            geometry: { type: "Point" as const, coordinates: [h.lng, h.lat] },
-            properties: {
+          // Fade as it goes un-confirmed: full at <=3 days, faint by 7.
+          const opacity =
+            ageDays <= 3 ? 1 : Math.max(0.4, 1 - ((ageDays - 3) / 4) * 0.6);
+
+          // Marker = type icon inside a severity-colored ring.
+          const el = document.createElement("div");
+          el.style.width = "15px";
+          el.style.height = "15px";
+          el.style.borderRadius = "50%";
+          el.style.background = sevColor(h.severity);
+          el.style.border = "1.5px solid #0f172a";
+          el.style.boxShadow = "0 1px 3px rgba(0,0,0,0.4)";
+          el.style.cursor = "pointer";
+          el.style.opacity = String(opacity);
+          el.addEventListener("click", (ev) => {
+            ev.stopPropagation();
+            if (reportModeRef.current) return;
+            setSelected({
               id: h.id,
               type: h.type,
               severity: h.severity,
+              owned: sessionReportsRef.current.has(h.id),
               lng: h.lng,
               lat: h.lat,
-              photo_url: h.photo_url ?? "",
-              report_count: h.report_count ?? 1,
-              age_days: ageDays,
-            },
-          };
-        });
-        // Bail if this map instance was replaced/removed (dev hot-reload).
-        if (mapRef.current !== map) return;
-        const source = map.getSource("hazards") as
-          | maplibregl.GeoJSONSource
-          | undefined;
-        source?.setData({ type: "FeatureCollection", features });
+              photoUrl: h.photo_url ? h.photo_url : null,
+              reportCount: Number(h.report_count) || 1,
+            });
+          });
+
+          const marker = new maplibregl.Marker({ element: el })
+            .setLngLat([h.lng, h.lat])
+            .addTo(map);
+          hazardMarkersRef.current.push(marker);
+        }
       } catch (err) {
         console.error("Failed to load hazards:", err);
       } finally {
@@ -231,50 +294,6 @@ export default function HazardMap() {
     reloadRef.current = loadHazards;
 
     map.on("load", () => {
-      map.addSource("hazards", {
-        type: "geojson",
-        data: { type: "FeatureCollection", features: [] },
-      });
-      map.addLayer({
-        id: "hazard-points",
-        type: "circle",
-        source: "hazards",
-        paint: {
-          "circle-radius": 7,
-          "circle-color": [
-            "match",
-            ["get", "severity"],
-            "high",
-            "#ef4444",
-            "medium",
-            "#f59e0b",
-            "low",
-            "#22c55e",
-            "#9ca3af",
-          ],
-          "circle-stroke-width": 1.5,
-          "circle-stroke-color": "#0f172a",
-          // Fade hazards as they go un-confirmed: bright at <=3 days, faint by 7.
-          "circle-opacity": [
-            "interpolate",
-            ["linear"],
-            ["get", "age_days"],
-            3,
-            1,
-            7,
-            0.3,
-          ],
-          "circle-stroke-opacity": [
-            "interpolate",
-            ["linear"],
-            ["get", "age_days"],
-            3,
-            1,
-            7,
-            0.3,
-          ],
-        },
-      });
       loadHazards();
     });
 
@@ -283,39 +302,6 @@ export default function HazardMap() {
       if (reportModeRef.current) {
         setDraft({ lng: e.lngLat.lng, lat: e.lngLat.lat });
       }
-    });
-
-    // Tap a dot (when NOT reporting) -> open the details panel.
-    map.on("click", "hazard-points", (e) => {
-      if (reportModeRef.current) return;
-      const f = e.features?.[0];
-      if (!f) return;
-      const p = (f.properties ?? {}) as {
-        id?: string;
-        type?: string;
-        severity?: string;
-        lng?: number;
-        lat?: number;
-        photo_url?: string;
-        report_count?: number;
-      };
-      if (!p.id) return;
-      setSelected({
-        id: p.id,
-        type: p.type ?? "",
-        severity: p.severity ?? "",
-        owned: sessionReportsRef.current.has(p.id),
-        lng: Number(p.lng),
-        lat: Number(p.lat),
-        photoUrl: p.photo_url ? p.photo_url : null,
-        reportCount: Number(p.report_count) || 1,
-      });
-    });
-    map.on("mouseenter", "hazard-points", () => {
-      if (!reportModeRef.current) map.getCanvas().style.cursor = "pointer";
-    });
-    map.on("mouseleave", "hazard-points", () => {
-      map.getCanvas().style.cursor = "";
     });
 
     return () => {
@@ -619,6 +605,72 @@ export default function HazardMap() {
     }
   }
 
+  async function postComment() {
+    if (!selected || !newComment.trim()) return;
+    setPostingComment(true);
+    try {
+      const res = await fetch(`/api/hazards/${selected.id}/comments`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: newComment.trim() }),
+      });
+      if (res.status === 401) {
+        router.push("/login");
+        return;
+      }
+      if (!res.ok) throw new Error("failed");
+      const data = await res.json();
+      setComments((c) => [...c, data.comment]);
+      setNewComment("");
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't post comment. Please try again.");
+    } finally {
+      setPostingComment(false);
+    }
+  }
+
+  async function saveEditComment(id: string) {
+    const text = editCommentText.trim();
+    if (!text) return;
+    try {
+      const res = await fetch(`/api/comments/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ body: text }),
+      });
+      if (res.status === 403) {
+        alert("You can only edit your own comments.");
+        return;
+      }
+      if (!res.ok) throw new Error("failed");
+      setComments((cs) =>
+        cs.map((c) => (c.id === id ? { ...c, body: text } : c))
+      );
+      setEditingCommentId(null);
+      setEditCommentText("");
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't update the comment.");
+    }
+  }
+
+  async function deleteComment(id: string) {
+    if (!window.confirm("Delete this comment?")) return;
+    try {
+      const res = await fetch(`/api/comments/${id}`, { method: "DELETE" });
+      if (res.status === 403) {
+        alert("You can only delete your own comments.");
+        return;
+      }
+      if (!res.ok) throw new Error("failed");
+      setComments((cs) => cs.filter((c) => c.id !== id));
+    } catch (err) {
+      console.error(err);
+      alert("Couldn't delete the comment.");
+    }
+  }
+
   return (
     <div className="relative h-full w-full">
       <div ref={containerRef} className="h-full w-full" />
@@ -843,6 +895,104 @@ export default function HazardMap() {
                 >
                   Delete
                 </button>
+              </div>
+
+              {/* Comments */}
+              <div className="border-t border-zinc-800 pt-3">
+                <p className="mb-2 text-xs font-semibold text-zinc-400">
+                  Comments
+                </p>
+                <div className="max-h-32 space-y-2 overflow-auto">
+                  {comments.length === 0 && (
+                    <p className="text-xs text-zinc-500">
+                      No comments yet — add local context.
+                    </p>
+                  )}
+                  {comments.map((c) => {
+                    const canModify =
+                      myIsAdmin || (!!myUid && c.user_id === myUid);
+                    return (
+                      <div key={c.id} className="text-sm">
+                        {editingCommentId === c.id ? (
+                          <div className="flex gap-2">
+                            <input
+                              value={editCommentText}
+                              onChange={(e) => setEditCommentText(e.target.value)}
+                              className="flex-1 rounded bg-zinc-800 px-2 py-1 text-sm outline-none"
+                            />
+                            <button
+                              onClick={() => saveEditComment(c.id)}
+                              className="text-xs font-semibold text-amber-400"
+                            >
+                              Save
+                            </button>
+                            <button
+                              onClick={() => setEditingCommentId(null)}
+                              className="text-xs text-zinc-500"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        ) : (
+                          <div className="flex items-start justify-between gap-2">
+                            <div>
+                              <span className="font-medium text-amber-300">
+                                {c.author}
+                              </span>{" "}
+                              <span className="text-zinc-300">{c.body}</span>
+                            </div>
+                            {canModify && (
+                              <div className="flex shrink-0 gap-2 text-xs text-zinc-500">
+                                <button
+                                  onClick={() => {
+                                    setEditingCommentId(c.id);
+                                    setEditCommentText(c.body);
+                                  }}
+                                  className="hover:text-white"
+                                >
+                                  Edit
+                                </button>
+                                <button
+                                  onClick={() => deleteComment(c.id)}
+                                  className="hover:text-red-400"
+                                >
+                                  Delete
+                                </button>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+                {loggedIn ? (
+                  <div className="mt-2 flex gap-2">
+                    <input
+                      value={newComment}
+                      onChange={(e) => setNewComment(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter") postComment();
+                      }}
+                      placeholder="Add a comment…"
+                      className="flex-1 rounded-lg bg-zinc-800 px-3 py-1.5 text-sm outline-none"
+                    />
+                    <button
+                      onClick={postComment}
+                      disabled={postingComment}
+                      className="rounded-lg bg-amber-400 px-3 py-1.5 text-sm font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-60"
+                    >
+                      Post
+                    </button>
+                  </div>
+                ) : (
+                  <p className="mt-2 text-xs text-zinc-500">
+                    <a href="/login" className="text-amber-400">
+                      Log in
+                    </a>{" "}
+                    to comment.
+                  </p>
+                )}
               </div>
             </div>
           ) : (

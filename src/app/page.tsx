@@ -35,6 +35,13 @@ export default function Home() {
         </Link>
       </div>
 
+      <Link
+        href="/dashboard"
+        className="mt-6 text-sm text-amber-400 hover:underline"
+      >
+        View the civic dashboard →
+      </Link>
+
       <p className="mt-16 text-sm text-zinc-500">
         Built for safer roads in Ahmedabad and beyond.
       </p>
