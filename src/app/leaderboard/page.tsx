@@ -17,40 +17,41 @@ export default function LeaderboardPage() {
       .finally(() => setLoaded(true));
   }, []);
 
-  const medal = (i: number) =>
-    i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : `${i + 1}`;
+  const rankColor = (i: number) =>
+    i === 0 ? "#f5c518" : i === 1 ? "#9aa7b5" : i === 2 ? "#cd7f32" : "var(--brand-strong)";
 
   return (
-    <main className="min-h-screen bg-zinc-950 px-6 py-10 text-white">
+    <main className="min-h-screen px-6 py-10" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <div className="mx-auto max-w-md">
-        <Link href="/map" className="text-sm text-zinc-400 hover:text-white">
+        <Link href="/app" className="text-sm font-medium" style={{ color: "var(--text-muted)" }}>
           ← Map
         </Link>
-        <h1 className="mt-3 text-2xl font-bold">🏆 Top Contributors</h1>
-        <p className="text-sm text-zinc-400">
-          People keeping Raahi&apos;s roads safer.
+        <h1 className="font-display mt-3 text-2xl font-extrabold">Top contributors</h1>
+        <p className="mt-1 text-sm" style={{ color: "var(--text-muted)" }}>
+          Drivers keeping RAAHI’s roads safer.
         </p>
 
         <div className="mt-6 space-y-2">
-          {!loaded && <p className="text-zinc-500">Loading…</p>}
+          {!loaded && <p className="text-sm" style={{ color: "var(--text-faint)" }}>Loading…</p>}
           {loaded && leaders.length === 0 && (
-            <p className="text-zinc-500">No reports yet — be the first!</p>
+            <p className="text-sm" style={{ color: "var(--text-muted)" }}>No reports yet — be the first!</p>
           )}
           {leaders.map((l, i) => (
             <div
               key={l.id}
-              className="flex items-center justify-between rounded-lg bg-zinc-900 px-4 py-3"
+              className="flex items-center justify-between rounded-2xl border p-3.5"
+              style={{ background: "var(--surface)", borderColor: "var(--border)" }}
             >
               <div className="flex items-center gap-3">
-                <span className="w-7 text-center text-lg font-bold text-amber-400">
-                  {medal(i)}
+                <span className="font-display w-6 text-center text-lg font-extrabold" style={{ color: rankColor(i) }}>
+                  {i + 1}
                 </span>
-                <span className="flex h-8 w-8 items-center justify-center rounded-full bg-amber-400 text-sm font-bold text-zinc-950">
+                <span className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold" style={{ background: "var(--brand)", color: "var(--brand-ink)" }}>
                   {l.name.charAt(0).toUpperCase()}
                 </span>
                 <span className="font-medium">{l.name}</span>
               </div>
-              <span className="text-sm text-zinc-400">
+              <span className="text-sm" style={{ color: "var(--text-muted)" }}>
                 {l.reports} report{l.reports === 1 ? "" : "s"}
               </span>
             </div>
