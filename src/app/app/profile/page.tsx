@@ -84,40 +84,38 @@ export default function ProfilePage() {
       <div className="mt-4 grid grid-cols-2 gap-3">
         <Card className="p-4">
           <div className="text-xs" style={{ color: "var(--text-muted)" }}>Your reports</div>
-          <div className="font-display mt-1 text-3xl font-extrabold" style={{ color: "var(--brand-strong)" }}>
-            {reports ?? "—"}
-          </div>
+          <div className="font-display mt-1 text-3xl font-extrabold" style={{ color: "var(--brand-strong)" }}>{reports ?? "—"}</div>
+          <div className="text-xs" style={{ color: "var(--text-faint)" }}>Total reports</div>
         </Card>
         <Card className="p-4">
           <div className="text-xs" style={{ color: "var(--text-muted)" }}>Leaderboard rank</div>
-          <div className="font-display mt-1 text-3xl font-extrabold">
-            {rank ? `#${rank}` : "—"}
-          </div>
+          <div className="font-display mt-1 text-3xl font-extrabold">{rank ? `#${rank}` : "—"}</div>
+          <div className="text-xs" style={{ color: "var(--text-faint)" }}>City rank</div>
         </Card>
       </div>
 
       <div className="mt-4 space-y-2">
-        <NavRow href="/dashboard" icon={<IconChart size={20} />} label="Command Center" />
-        <NavRow href="/leaderboard" icon={<IconUsers size={20} />} label="Leaderboard" />
+        <NavRow href="/dashboard" icon={<IconChart size={20} />} label="Command Center" sub="View city safety overview" />
+        <NavRow href="/leaderboard" icon={<IconUsers size={20} />} label="Leaderboard" sub="See top contributors" />
       </div>
 
-      <Button variant="outline" full className="mt-6" onClick={logout}>
+      <button onClick={logout} className="btn-press mt-6 flex w-full items-center justify-center gap-2 rounded-2xl border py-3.5 font-semibold" style={{ borderColor: "var(--border)", color: "var(--danger)" }}>
         Sign out
-      </Button>
+      </button>
     </main>
   );
 }
 
-function NavRow({ href, icon, label }: { href: string; icon: React.ReactNode; label: string }) {
+function NavRow({ href, icon, label, sub }: { href: string; icon: React.ReactNode; label: string; sub: string }) {
   return (
     <Link
       href={href}
       className="btn-press flex items-center justify-between rounded-2xl border p-4"
       style={{ background: "var(--surface)", borderColor: "var(--border)" }}
     >
-      <span className="flex items-center gap-3 font-semibold">
-        <span style={{ color: "var(--brand-strong)" }}>{icon}</span>
-        {label}
+      <span className="flex items-center gap-3">
+        <span className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: "var(--brand-soft)", color: "var(--brand-strong)" }}>{icon}</span>
+        <span><span className="block font-semibold">{label}</span><span className="block text-xs" style={{ color: "var(--text-muted)" }}>{sub}</span></span>
       </span>
       <IconChevronRight size={18} />
     </Link>

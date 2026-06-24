@@ -731,7 +731,7 @@ export default function HazardMap() {
       )}
 
       {!reportMode && (
-        <div className="absolute bottom-28 right-4 z-20 flex flex-col items-end gap-3">
+        <div className="absolute bottom-28 left-1/2 z-20 flex -translate-x-1/2 flex-wrap items-center justify-center gap-3">
           <button
             onClick={toggleWarnings}
             className="btn-press rounded-full px-5 py-3 font-semibold shadow-lg"
@@ -754,93 +754,63 @@ export default function HazardMap() {
       )}
 
       {reportMode && (
-        <div className="absolute inset-x-0 bottom-0 z-20 mx-auto max-w-lg rounded-t-2xl bg-zinc-900/95 p-4 text-white shadow-2xl">
+        <div
+          className="thin-scroll absolute inset-x-0 bottom-0 z-30 mx-auto max-h-[80vh] max-w-lg overflow-y-auto rounded-t-2xl border-t px-4 pt-4 pb-28"
+          style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow-lg)" }}
+        >
+          <div className="mb-3 flex items-center justify-between">
+            <span className="font-display text-base font-bold">{draft ? "New hazard here" : "Report a hazard"}</span>
+            <button onClick={cancelReport} aria-label="Cancel" className="btn-press flex h-8 w-8 items-center justify-center rounded-full" style={{ background: "var(--surface-2)", color: "var(--text-muted)" }}>
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M6 6l12 12M18 6 6 18" /></svg>
+            </button>
+          </div>
           {!draft ? (
             <div className="space-y-3">
-              <p className="text-sm">
-                📍 Tap the spot on the map where the hazard is — or use your
-                current location.
+              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
+                Tap the spot on the map where the hazard is — or use your current location.
               </p>
               <div className="flex gap-2">
-                <button
-                  onClick={useMyLocation}
-                  className="rounded-lg bg-zinc-700 px-4 py-2 text-sm font-semibold hover:bg-zinc-600"
-                >
+                <button onClick={useMyLocation} className="btn-press rounded-lg px-4 py-2.5 text-sm font-semibold" style={{ background: "var(--brand)", color: "var(--brand-ink)" }}>
                   Use my location
                 </button>
-                <button
-                  onClick={cancelReport}
-                  className="rounded-lg px-4 py-2 text-sm font-semibold text-zinc-400 hover:text-white"
-                >
+                <button onClick={cancelReport} className="rounded-lg border px-4 py-2.5 text-sm font-semibold" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
                   Cancel
                 </button>
               </div>
             </div>
           ) : (
             <div className="space-y-3">
-              <p className="text-sm font-semibold">New hazard here</p>
-              <label className="block text-sm">
+              <label className="block text-sm font-medium">
                 Type
-                <select
-                  value={type}
-                  onChange={(e) => setType(e.target.value)}
-                  className="mt-1 w-full rounded-lg bg-zinc-800 p-2 text-white"
-                >
-                  {HAZARD_TYPES.map((t) => (
-                    <option key={t.value} value={t.value}>
-                      {t.label}
-                    </option>
-                  ))}
+                <select value={type} onChange={(e) => setType(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}>
+                  {HAZARD_TYPES.map((t) => (<option key={t.value} value={t.value}>{t.label}</option>))}
                 </select>
               </label>
-              <label className="block text-sm">
+              <label className="block text-sm font-medium">
                 Severity
-                <select
-                  value={severity}
-                  onChange={(e) => setSeverity(e.target.value)}
-                  className="mt-1 w-full rounded-lg bg-zinc-800 p-2 text-white"
-                >
+                <select value={severity} onChange={(e) => setSeverity(e.target.value)} className="mt-1 w-full rounded-lg border p-2.5 text-sm" style={{ background: "var(--surface-2)", borderColor: "var(--border)", color: "var(--text)" }}>
                   <option value="low">Low</option>
                   <option value="medium">Medium</option>
                   <option value="high">High</option>
                 </select>
               </label>
               <div>
-                <label className="block text-sm">
-                  Photo (optional)
-                  <input
-                    type="file"
-                    accept="image/*"
-                    capture="environment"
-                    onChange={handlePhoto}
-                    className="mt-1 block w-full text-xs text-zinc-300"
-                  />
+                <span className="block text-sm font-medium">Photo (optional)</span>
+                <label className="btn-press mt-1.5 flex cursor-pointer items-center justify-center gap-2 rounded-xl border border-dashed p-3 text-sm font-medium" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
+                  <input type="file" accept="image/*" capture="environment" onChange={handlePhoto} className="hidden" />
+                  <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round"><path d="M4 8h3l1.5-2h7L17 8h3v11H4Z" /><circle cx="12" cy="13" r="3.2" /></svg>
+                  {uploading ? "Uploading…" : photoUrl ? "Change photo" : "Take or upload photo"}
                 </label>
-                {uploading && (
-                  <p className="mt-1 text-xs text-zinc-400">Uploading photo…</p>
-                )}
                 {photoUrl && (
                   // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photoUrl}
-                    alt="hazard"
-                    className="mt-2 h-20 w-20 rounded object-cover"
-                  />
+                  <img src={photoUrl} alt="hazard" className="mt-2 h-28 w-full rounded-xl object-cover" />
                 )}
               </div>
-
               <div className="flex gap-2 pt-1">
-                <button
-                  onClick={submitReport}
-                  disabled={submitting || uploading}
-                  className="flex-1 rounded-lg bg-amber-400 px-4 py-2 font-semibold text-zinc-950 hover:bg-amber-300 disabled:opacity-60"
-                >
+                <button onClick={submitReport} disabled={submitting || uploading} className="btn-press flex-1 rounded-lg px-4 py-2.5 font-semibold disabled:opacity-60" style={{ background: "var(--brand)", color: "var(--brand-ink)" }}>
                   {submitting ? "Saving…" : "Submit hazard"}
                 </button>
-                <button
-                  onClick={cancelReport}
-                  className="rounded-lg px-4 py-2 font-semibold text-zinc-400 hover:text-white"
-                >
+                <button onClick={cancelReport} className="rounded-lg border px-4 py-2.5 font-semibold" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>
                   Cancel
                 </button>
               </div>

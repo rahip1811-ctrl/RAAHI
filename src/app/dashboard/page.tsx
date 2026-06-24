@@ -6,6 +6,7 @@ import DashboardMap from "@/components/DashboardMap";
 import Donut from "@/components/Donut";
 import ThemeToggle from "@/components/ThemeToggle";
 import { SeverityChip } from "@/components/ui";
+import { hazardImage } from "@/lib/hazardImages";
 import {
   IconLayers, IconAlert, IconTrend, IconVoice, IconFeed, IconUsers,
   IconClock, IconBell, IconChevronRight,
@@ -16,7 +17,20 @@ type Dash = {
   byType: { type: string; count: number }[];
   hotspots: { name: string; count: number; score: number }[];
 };
-type Hz = { id: string; type: string; severity: string; report_count?: number; created_at?: string };
+type Hz = { id: string; type: string; severity: string; report_count?: number; created_at?: string; photo_url?: string | null };
+
+function FeedImg({ h }: { h: Hz }) {
+  const [err, setErr] = useState(false);
+  if (!err) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={hazardImage(h.photo_url, h.type)} alt="" onError={() => setErr(true)} className="h-9 w-9 shrink-0 rounded-lg object-cover" />;
+  }
+  return (
+    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-sm font-bold" style={{ background: `${TYPE_COLORS[h.type]}1f`, color: TYPE_COLORS[h.type] }}>
+      {typeLabel(h.type).charAt(0)}
+    </span>
+  );
+}
 
 const typeLabel = (t: string) => (t === "pothole" ? "Pothole" : t === "debris" ? "Debris" : "Construction");
 const TYPE_COLORS: Record<string, string> = { pothole: "#ef4444", debris: "#f59e0b", construction: "#6366f1" };
@@ -101,7 +115,7 @@ export default function DashboardOverview() {
               {feed.length === 0 && <p className="text-sm" style={{ color: "var(--text-faint)" }}>No reports yet.</p>}
               {feed.slice(0, 10).map((h) => (
                 <div key={h.id} className="flex items-center gap-3 rounded-xl border p-2.5" style={{ borderColor: "var(--border)" }}>
-                  <span className="flex h-8 w-8 items-center justify-center rounded-lg text-sm font-bold" style={{ background: `${TYPE_COLORS[h.type]}1f`, color: TYPE_COLORS[h.type] }}>{typeLabel(h.type).charAt(0)}</span>
+                  <FeedImg h={h} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-sm font-semibold">{typeLabel(h.type)}</div>
                     <div className="text-xs" style={{ color: "var(--text-faint)" }}>Ahmedabad · {ago(h.created_at)}</div>

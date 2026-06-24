@@ -22,7 +22,7 @@ export default function DashMapPage() {
         <DashboardMap />
 
         {/* overlay control card */}
-        <div className="absolute left-4 top-4 z-10 w-52 rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow)" }}>
+        <div className="absolute left-4 top-4 z-10 w-52 rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
           <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>Map layers</div>
           <div className="mt-2 space-y-1.5 text-sm">
             {LAYERS.map((l) => (

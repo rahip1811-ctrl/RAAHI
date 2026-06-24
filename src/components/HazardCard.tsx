@@ -1,4 +1,8 @@
+"use client";
+
+import { useState } from "react";
 import { SeverityChip, sevVar } from "@/components/ui";
+import { hazardImage } from "@/lib/hazardImages";
 
 export type Hazard = {
   id: string;
@@ -38,16 +42,18 @@ export default function HazardCard({
 }) {
   const dist = fmtDist(h.distance_m);
   const time = ago(h.created_at);
+  const [imgErr, setImgErr] = useState(false);
   return (
     <div
       className="flex items-center gap-3 rounded-2xl border p-3"
-      style={{ background: "var(--surface)", borderColor: "var(--border)" }}
+      style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)" }}
     >
-      {h.photo_url ? (
+      {!imgErr ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={h.photo_url}
+          src={hazardImage(h.photo_url, h.type)}
           alt={h.type}
+          onError={() => setImgErr(true)}
           className="h-14 w-14 shrink-0 rounded-xl object-cover"
         />
       ) : (

@@ -76,7 +76,19 @@ export default function NearbyPage() {
         )}
 
         {state === "ready" &&
-          hazards?.map((h) => <HazardCard key={h.id} h={h} />)}
+          hazards?.map((h) => (
+            <HazardCard
+              key={h.id}
+              h={h}
+              right={
+                h.distance_m != null ? (
+                  <span className="shrink-0 text-sm font-bold" style={{ color: "var(--brand-strong)" }}>
+                    {h.distance_m < 1000 ? `${Math.round(h.distance_m)} m` : `${(h.distance_m / 1000).toFixed(1)} km`}
+                  </span>
+                ) : undefined
+              }
+            />
+          ))}
       </div>
     </main>
   );

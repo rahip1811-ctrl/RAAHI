@@ -5,6 +5,7 @@ import Link from "next/link";
 import DashHeader from "@/components/DashHeader";
 import { SeverityChip, sevVar } from "@/components/ui";
 import { IconCheck, IconAlert, IconClock, IconLayers, IconX, IconPin, IconChevronRight } from "@/components/icons";
+import { hazardImage } from "@/lib/hazardImages";
 
 type Report = { id: string; type: string; severity: string; status: string; photo_url: string | null; report_count: number; created_at: string; location: string; comments: number; lat: number; lng: number };
 type Summary = { active: number; today: number; critical: number; verifiedRate: number };
@@ -31,18 +32,56 @@ function Stat({ label, value, color, icon }: { label: string; value: React.React
 }
 
 function HazardArt({ type, className = "" }: { type: string; className?: string }) {
-  const c = TYPE_COLORS[type] ?? "#888";
   return (
-    <div className={`relative overflow-hidden ${className}`} style={{ background: `linear-gradient(135deg, ${c}26, ${c}0a)` }}>
-      <svg viewBox="0 0 120 100" className="absolute inset-0 h-full w-full" preserveAspectRatio="xMidYMid slice">
-        <rect x="0" y="58" width="120" height="42" fill={`${c}1c`} />
-        <line x1="0" y1="79" x2="120" y2="79" stroke={`${c}66`} strokeWidth="2" strokeDasharray="8 7" />
-        <ellipse cx="60" cy="70" rx="26" ry="11" fill={`${c}55`} />
-        <ellipse cx="57" cy="68" rx="15" ry="6.5" fill={`${c}aa`} />
-        <text x="60" y="26" textAnchor="middle" fontSize="13" fontWeight="800" fill={c} fontFamily="sans-serif">{typeLabel(type)}</text>
+    <div className={`relative overflow-hidden ${className}`}>
+      <svg viewBox="0 0 200 130" preserveAspectRatio="xMidYMid slice" className="absolute inset-0 h-full w-full">
+        <rect width="200" height="130" fill="#8b95a3" />
+        <rect width="200" height="130" fill="#000" opacity="0.04" />
+        <line x1="100" y1="-5" x2="100" y2="135" stroke="#eef2f6" strokeWidth="5" strokeDasharray="16 13" opacity="0.6" />
+        {type === "construction" ? (
+          <g>
+            <rect x="22" y="34" width="156" height="16" rx="2" fill="#f3a712" />
+            <g fill="#1f2933" opacity="0.85">
+              <polygon points="22,34 40,34 26,50 22,50" />
+              <polygon points="54,34 72,34 58,50 40,50" />
+              <polygon points="86,34 104,34 90,50 72,50" />
+              <polygon points="118,34 136,34 122,50 104,50" />
+              <polygon points="150,34 168,34 154,50 136,50" />
+            </g>
+            <polygon points="100,52 120,104 80,104" fill="#fb6514" />
+            <rect x="82" y="104" width="36" height="10" rx="2" fill="#e0490b" />
+            <rect x="88" y="70" width="24" height="7" fill="#fff" />
+            <rect x="85" y="84" width="30" height="7" fill="#fff" />
+          </g>
+        ) : type === "debris" ? (
+          <g>
+            <ellipse cx="100" cy="104" rx="70" ry="12" fill="#000" opacity="0.12" />
+            <polygon points="58,74 76,66 88,80 70,92" fill="#6b7480" />
+            <polygon points="92,70 116,62 128,84 104,94" fill="#52606d" />
+            <circle cx="138" cy="86" r="12" fill="#7b8794" />
+            <circle cx="74" cy="92" r="8" fill="#9aa5b1" />
+            <polygon points="118,92 134,88 138,104 120,108" fill="#3e4c59" />
+            <circle cx="96" cy="98" r="5" fill="#8a96a3" />
+          </g>
+        ) : (
+          <g>
+            <path d="M62 80 Q50 60 74 52 Q104 44 128 58 Q150 72 132 90 Q112 106 86 100 Q66 95 62 80 Z" fill="#262b31" />
+            <path d="M80 76 Q74 66 92 62 Q112 58 122 70 Q128 80 114 86 Q96 92 84 84 Q78 80 80 76 Z" fill="#111418" />
+            <path d="M48 46 L56 54 M156 44 L146 54 M160 96 L148 88 M40 96 L52 90" stroke="#5c6470" strokeWidth="2.5" strokeLinecap="round" />
+          </g>
+        )}
       </svg>
     </div>
   );
+}
+
+function Thumb({ url, type, className = "", contain = false }: { url: string | null; type: string; className?: string; contain?: boolean }) {
+  const [err, setErr] = useState(false);
+  if (!err) {
+    // eslint-disable-next-line @next/next/no-img-element
+    return <img src={hazardImage(url, type)} alt="" onError={() => setErr(true)} className={`${contain ? "object-contain" : "object-cover"} ${className}`} />;
+  }
+  return <HazardArt type={type} className={className} />;
 }
 
 export default function ReportsPage() {
@@ -108,12 +147,7 @@ export default function ReportsPage() {
                   </div>
                   <span className="hidden text-xs sm:block" style={{ color: "var(--text-muted)" }}>{r.report_count} conf.</span>
                   <SeverityChip s={r.severity} />
-                  {r.photo_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img src={r.photo_url} alt="" className="hidden h-10 w-10 rounded-lg object-cover sm:block" />
-                  ) : (
-                    <HazardArt type={r.type} className="hidden h-10 w-10 rounded-lg sm:block" />
-                  )}
+                  <Thumb url={r.photo_url} type={r.type} className="hidden h-10 w-10 rounded-lg sm:block" />
                   <IconChevronRight size={16} />
                 </button>
               ))}
@@ -144,12 +178,9 @@ export default function ReportsPage() {
                 </div>
                 {msg && <p className="mt-2 text-xs" style={{ color: "var(--caution)" }}>{msg}</p>}
 
-                {sel.photo_url ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={sel.photo_url} alt="" className="mt-4 h-40 w-full rounded-xl object-cover" />
-                ) : (
-                  <HazardArt type={sel.type} className="mt-4 h-40 w-full rounded-xl border" />
-                )}
+                <div className="mt-4 flex items-center justify-center overflow-hidden rounded-xl border" style={{ borderColor: "var(--border)", background: "var(--surface-2)" }}>
+                  <Thumb url={sel.photo_url} type={sel.type} contain className="h-56 w-full" />
+                </div>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 text-sm">
                   <div className="rounded-xl border p-3" style={{ borderColor: "var(--border)" }}><div className="text-xs" style={{ color: "var(--text-faint)" }}>Confirmations</div><div className="font-display text-lg font-extrabold">{sel.report_count}</div></div>
