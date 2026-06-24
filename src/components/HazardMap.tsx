@@ -731,22 +731,24 @@ export default function HazardMap() {
       )}
 
       {!reportMode && (
-        <div className="absolute bottom-6 right-4 z-20 flex flex-col items-end gap-3">
+        <div className="absolute bottom-28 right-4 z-20 flex flex-col items-end gap-3">
           <button
             onClick={toggleWarnings}
-            className={`rounded-full px-5 py-3 font-semibold shadow-lg ${
+            className="btn-press rounded-full px-5 py-3 font-semibold shadow-lg"
+            style={
               warningsOn
-                ? "bg-red-500 text-white hover:bg-red-400"
-                : "bg-zinc-900/90 text-white hover:bg-zinc-800"
-            }`}
+                ? { background: "var(--danger)", color: "#fff" }
+                : { background: "var(--surface)", color: "var(--text)", border: "1px solid var(--border)" }
+            }
           >
-            {warningsOn ? "■ Stop warnings" : "🔊 Start warnings"}
+            {warningsOn ? "Stop warnings" : "Start warnings"}
           </button>
           <button
             onClick={startReport}
-            className="rounded-full bg-amber-400 px-5 py-3 font-semibold text-zinc-950 shadow-lg hover:bg-amber-300"
+            className="btn-press rounded-full px-5 py-3 font-semibold shadow-lg"
+            style={{ background: "var(--brand)", color: "var(--brand-ink)" }}
           >
-            ＋ Report a hazard
+            + Report a hazard
           </button>
         </div>
       )}

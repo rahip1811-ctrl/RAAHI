@@ -3,76 +3,82 @@
 import { useEffect, useState } from "react";
 import DashHeader from "@/components/DashHeader";
 import Donut from "@/components/Donut";
-import { Card } from "@/components/ui";
 
-type Dash = {
-  stats: { total: number; high: number; medium: number; low: number };
+type Analytics = {
+  totals: { active: number; resolved: number; high: number; medium: number; low: number; allTime: number; resolutionRate: number; mostCommon: string | null };
   byType: { type: string; count: number }[];
+  severity: { label: string; value: number }[];
+  overTime: { day: string; reports: number; resolved: number }[];
 };
 
-const typeLabel = (t: string) =>
-  t === "pothole" ? "Pothole" : t === "debris" ? "Debris" : "Construction";
+const typeLabel = (t: string) => (t === "pothole" ? "Pothole" : t === "debris" ? "Debris" : "Construction");
 const TYPE_COLORS: Record<string, string> = { pothole: "#ef4444", debris: "#f59e0b", construction: "#6366f1" };
 
-export default function AnalyticsPage() {
-  const [data, setData] = useState<Dash | null>(null);
-
-  useEffect(() => {
-    fetch("/api/dashboard").then((r) => r.json()).then(setData).catch(() => {});
-  }, []);
-
-  const s = data?.stats;
-  const maxType = Math.max(1, ...(data?.byType.map((t) => t.count) ?? [1]));
-
+function LineChart({ data }: { data: { day: string; reports: number; resolved: number }[] }) {
+  const W = 600, H = 200, P = 28;
+  if (data.length === 0) return <p className="py-10 text-center text-sm" style={{ color: "var(--text-faint)" }}>No time-series data yet.</p>;
+  const max = Math.max(1, ...data.map((d) => Math.max(d.reports, d.resolved)));
+  const x = (i: number) => P + (i * (W - 2 * P)) / Math.max(1, data.length - 1);
+  const y = (v: number) => H - P - (v / max) * (H - 2 * P);
+  const path = (key: "reports" | "resolved") =>
+    data.map((d, i) => `${i === 0 ? "M" : "L"}${x(i)},${y(d[key])}`).join(" ");
   return (
-    <main className="px-6 py-7 lg:px-8">
-      <DashHeader title="Analytics" subtitle="Distribution of what's on the roads right now." />
+    <svg viewBox={`0 0 ${W} ${H}`} className="w-full">
+      {[0, 0.5, 1].map((f, i) => (<line key={i} x1={P} x2={W - P} y1={P + f * (H - 2 * P)} y2={P + f * (H - 2 * P)} stroke="var(--border)" strokeWidth="1" />))}
+      <path d={path("reports")} fill="none" stroke="var(--brand)" strokeWidth="2.5" />
+      <path d={path("resolved")} fill="none" stroke="#3b82f6" strokeWidth="2.5" />
+      {data.map((d, i) => (<g key={i}><circle cx={x(i)} cy={y(d.reports)} r="3" fill="var(--brand)" /><circle cx={x(i)} cy={y(d.resolved)} r="3" fill="#3b82f6" /></g>))}
+      {data.map((d, i) => (<text key={i} x={x(i)} y={H - 8} fontSize="9" textAnchor="middle" fill="var(--text-faint)">{d.day}</text>))}
+    </svg>
+  );
+}
 
-      <div className="grid gap-5 lg:grid-cols-2">
-        <Card className="p-5">
-          <h2 className="mb-4 font-semibold">Hazard types</h2>
-          {data && (
-            <Donut
-              centerValue={data.byType.reduce((a, b) => a + b.count, 0)}
-              centerLabel="reports"
-              data={data.byType.map((t) => ({ label: typeLabel(t.type), value: t.count, color: TYPE_COLORS[t.type] ?? "var(--text-faint)" }))}
-            />
-          )}
-        </Card>
+function Mini({ label, value, color }: { label: string; value: React.ReactNode; color: string }) {
+  return (
+    <div className="rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+      <div className="text-xs" style={{ color: "var(--text-muted)" }}>{label}</div>
+      <div className="font-display mt-1 text-2xl font-extrabold stat-pop" style={{ color }}>{value}</div>
+    </div>
+  );
+}
 
-        <Card className="p-5">
-          <h2 className="mb-4 font-semibold">Severity split</h2>
-          {s && (
-            <Donut
-              centerValue={s.total}
-              centerLabel="active"
-              data={[
-                { label: "High", value: s.high, color: "var(--danger)" },
-                { label: "Medium", value: s.medium, color: "var(--caution)" },
-                { label: "Low", value: s.low, color: "var(--clear)" },
-              ]}
-            />
-          )}
-        </Card>
-      </div>
+export default function AnalyticsPage() {
+  const [a, setA] = useState<Analytics | null>(null);
+  useEffect(() => { fetch("/api/analytics").then((r) => r.json()).then(setA).catch(() => {}); }, []);
 
-      <Card className="mt-5 p-5">
-        <h2 className="mb-4 font-semibold">Reports by type</h2>
-        <div className="space-y-3">
-          {data?.byType.map((t) => (
-            <div key={t.type}>
-              <div className="mb-1 flex items-center justify-between text-sm">
-                <span style={{ color: "var(--text-muted)" }}>{typeLabel(t.type)}</span>
-                <span className="font-semibold">{t.count}</span>
-              </div>
-              <div className="h-2.5 w-full overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
-                <div className="h-full rounded-full" style={{ width: `${(t.count / maxType) * 100}%`, background: TYPE_COLORS[t.type] ?? "var(--brand)" }} />
-              </div>
-            </div>
-          ))}
-          {!data && <p className="text-sm" style={{ color: "var(--text-faint)" }}>Loading…</p>}
+  const t = a?.totals;
+  return (
+    <main className="relative px-6 py-7 lg:px-8">
+      <span className="page-glow" style={{ top: -100, left: 200 }} />
+      <div className="relative">
+        <DashHeader title="Analytics" subtitle="Distribution of what's on the roads right now." />
+
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <Mini label="Total reports" value={t?.allTime ?? "—"} color="var(--text)" />
+          <Mini label="Most common" value={t?.mostCommon ? typeLabel(t.mostCommon) : "—"} color="var(--danger)" />
+          <Mini label="High severity" value={t?.high ?? "—"} color="var(--danger)" />
+          <Mini label="Resolution rate" value={t ? `${t.resolutionRate}%` : "—"} color="var(--clear)" />
         </div>
-      </Card>
+
+        <div className="grid gap-5 lg:grid-cols-3">
+          <div className="card-accent rounded-2xl border p-6" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <h2 className="mb-4 font-semibold">Reports by type</h2>
+            {a && <Donut centerValue={a.byType.reduce((x, y) => x + y.count, 0)} centerLabel="active" data={a.byType.map((x) => ({ label: typeLabel(x.type), value: x.count, color: TYPE_COLORS[x.type] ?? "var(--text-faint)" }))} />}
+          </div>
+          <div className="card-accent rounded-2xl border p-6" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <h2 className="mb-4 font-semibold">Severity split</h2>
+            {a && <Donut centerValue={(t?.active ?? 0)} centerLabel="active" data={a.severity.map((x) => ({ label: x.label, value: x.value, color: x.label === "High" ? "var(--danger)" : x.label === "Medium" ? "var(--caution)" : "var(--clear)" }))} />}
+          </div>
+          <div className="rounded-2xl border p-6 lg:col-span-1" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <h2 className="mb-4 font-semibold">Reports over time</h2>
+            <div className="mb-2 flex gap-4 text-xs" style={{ color: "var(--text-muted)" }}>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: "var(--brand)" }} /> Reported</span>
+              <span className="flex items-center gap-1.5"><span className="h-2 w-2 rounded-full" style={{ background: "#3b82f6" }} /> Resolved</span>
+            </div>
+            {a && <LineChart data={a.overTime} />}
+          </div>
+        </div>
+      </div>
     </main>
   );
 }

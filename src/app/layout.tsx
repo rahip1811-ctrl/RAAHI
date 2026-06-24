@@ -1,16 +1,10 @@
 import type { Metadata } from "next";
-import { Inter, Hind } from "next/font/google";
+import { Inter } from "next/font/google";
 import "./globals.css";
 
 const body = Inter({
   subsets: ["latin"],
   variable: "--font-body",
-});
-
-const deva = Hind({
-  subsets: ["latin", "devanagari"],
-  weight: ["400", "500", "600", "700"],
-  variable: "--font-deva",
 });
 
 export const metadata: Metadata = {
@@ -45,7 +39,7 @@ export default function RootLayout({
   return (
     <html
       lang="en"
-      className={`${body.variable} ${deva.variable} h-full antialiased`}
+      className={`${body.variable} h-full antialiased`}
       suppressHydrationWarning
     >
       <head>

@@ -128,6 +128,62 @@ body {
   letter-spacing: 0.02em;
 }
 
+/* ── richness utilities ──────────────────────────────────────── */
+.grad-brand {
+  background-image: linear-gradient(135deg, var(--brand-2), var(--brand-strong));
+}
+.text-grad {
+  background-image: linear-gradient(120deg, var(--brand-2), var(--brand-strong));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+.glow-brand {
+  box-shadow: 0 10px 40px -10px var(--brand);
+}
+
+/* card with a gradient accent bar on top */
+.card-accent {
+  position: relative;
+  overflow: hidden;
+}
+.card-accent::before {
+  content: "";
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background-image: linear-gradient(90deg, var(--brand-2), var(--brand-strong));
+}
+
+/* a soft brand glow blob for page backdrops */
+.page-glow {
+  position: fixed;
+  pointer-events: none;
+  z-index: 0;
+  width: 540px;
+  height: 540px;
+  border-radius: 9999px;
+  filter: blur(120px);
+  opacity: 0.16;
+  background: radial-gradient(circle, var(--brand) 0%, transparent 70%);
+}
+
+/* number-pop for big stats */
+.stat-pop {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.02em;
+}
+
+/* hover lift for cards */
+.lift {
+  transition: transform 0.16s ease, box-shadow 0.16s ease, border-color 0.16s ease;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-lg);
+  border-color: color-mix(in srgb, var(--brand) 40%, var(--border));
+}
+
 .btn-press {
   transition: transform 0.06s ease, background-color 0.15s ease,
     border-color 0.15s ease, box-shadow 0.15s ease, opacity 0.15s ease;
