@@ -14,21 +14,22 @@ export async function GET() {
        limit 30`
     );
 
-    const reports = await Promise.all(
-      rows.rows.map(async (r) => ({
-        ...r,
-        location: (await areaName(r.lat, r.lng)) ?? "Ahmedabad",
-      }))
-    );
-
-    const sum = await db.query(
-      `select count(*) filter (where status='active')::int as active,
-              count(*) filter (where created_at >= date_trunc('day', now()))::int as today,
-              count(*) filter (where status='active' and severity='high')::int as critical,
-              count(*) filter (where coalesce(report_count,1) > 1)::int as verified,
-              count(*)::int as total
-       from hazards`
-    );
+    const [reports, sum] = await Promise.all([
+      Promise.all(
+        rows.rows.map(async (r) => ({
+          ...r,
+          location: (await areaName(r.lat, r.lng)) ?? "Ahmedabad",
+        }))
+      ),
+      db.query(
+        `select count(*) filter (where status='active')::int as active,
+                count(*) filter (where created_at >= date_trunc('day', now()))::int as today,
+                count(*) filter (where status='active' and severity='high')::int as critical,
+                count(*) filter (where coalesce(report_count,1) > 1)::int as verified,
+                count(*)::int as total
+         from hazards`
+      ),
+    ]);
     const s = sum.rows[0];
     const verifiedRate = s.total ? Math.round((s.verified / s.total) * 100) : 0;
 
