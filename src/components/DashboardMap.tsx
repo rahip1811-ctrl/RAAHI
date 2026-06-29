@@ -86,8 +86,15 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
         return { url };
       },
     });
+
     mapRef.current = map;
+
+    [100, 300, 600, 1200].forEach((t) =>
+      setTimeout(() => { mapRef.current?.resize(); }, t)
+    );
+
     map.on("style.load", () => {
+      map.resize();
       map.jumpTo({ center: [START.lng, START.lat], zoom: START.zoom });
     });
 
@@ -98,6 +105,7 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
     });
 
     map.on("load", async () => {
+      map.resize();
       map.jumpTo({ center: [START.lng, START.lat], zoom: START.zoom });
       try {
         const res = await fetch("/api/hazards");
@@ -105,7 +113,6 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
         const hazards: Hazard[] = data.hazards ?? [];
         if (mapRef.current !== map) return;
 
-        // 1) Heatmap (density), warm danger gradient.
         map.addSource("hz", {
           type: "geojson",
           data: {
@@ -123,35 +130,18 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
           source: "hz",
           paint: {
             "heatmap-weight": [
-              "match",
-              ["get", "severity"],
-              "high",
-              1,
-              "medium",
-              0.6,
-              "low",
-              0.3,
-              0.5,
+              "match", ["get", "severity"],
+              "high", 1, "medium", 0.6, "low", 0.3, 0.5,
             ],
-            // Green (light) -> yellow -> orange -> red (dense), like the reference.
             "heatmap-color": [
-              "interpolate",
-              ["linear"],
-              ["heatmap-density"],
-              0,
-              "rgba(0,0,0,0)",
-              0.1,
-              "rgba(0,150,70,0.45)",
-              0.3,
-              "rgba(130,190,30,0.62)",
-              0.5,
-              "rgba(230,195,30,0.78)",
-              0.7,
-              "rgba(235,135,30,0.9)",
-              0.9,
-              "rgba(210,45,35,0.97)",
-              1,
-              "rgba(150,15,25,1)",
+              "interpolate", ["linear"], ["heatmap-density"],
+              0, "rgba(0,0,0,0)",
+              0.1, "rgba(0,150,70,0.45)",
+              0.3, "rgba(130,190,30,0.62)",
+              0.5, "rgba(230,195,30,0.78)",
+              0.7, "rgba(235,135,30,0.9)",
+              0.9, "rgba(210,45,35,0.97)",
+              1, "rgba(150,15,25,1)",
             ],
             "heatmap-radius": 46,
             "heatmap-intensity": 1.25,
@@ -159,8 +149,6 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
           },
         });
 
-        // 2) Real photo thumbnails on top. Hazards without a photo are shown by
-        //    the heatmap glow only — no dot markers.
         for (const h of hazards) {
           if (!h.photo_url) continue;
           const el = document.createElement("div");
