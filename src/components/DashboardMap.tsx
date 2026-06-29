@@ -51,14 +51,17 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      // Tiles are proxied through our own /api/maptile so they load even on
-      // networks that block external tile CDNs. Carto Voyager = colourful streets.
+      // Carto's colourful "Voyager" basemap (streets, parks, labels).
       style: {
         version: 8,
         sources: {
           basemap: {
             type: "raster",
-            tiles: ["/api/maptile?z={z}&x={x}&y={y}"],
+            tiles: [
+              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
+            ],
             tileSize: 256,
             maxzoom: 19,
             attribution: "© OpenStreetMap contributors © CARTO",

@@ -18,7 +18,9 @@ export default function DashMapPage() {
 
   useEffect(() => {
     const p = new URLSearchParams(window.location.search);
-    const lat = Number(p.get("lat")), lng = Number(p.get("lng"));
+    const latP = p.get("lat"), lngP = p.get("lng");
+    if (latP === null || lngP === null) return; // no coords -> stay on Ahmedabad, no pin
+    const lat = Number(latP), lng = Number(lngP);
     if (Number.isFinite(lat) && Number.isFinite(lng)) setFocus({ lat, lng, label: p.get("label") ?? undefined });
   }, []);
 
