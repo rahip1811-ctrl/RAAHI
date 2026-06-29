@@ -25,7 +25,8 @@ export default function DriverPanels() {
     <>
       {/* ── left control stack ── */}
       
-        <div className="pointer-events-auto round<div className="pointer-events-none absolute left-3 top-20 z-10 flex w-44 flex-col gap-3 md:w-60">ed-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
+        <div className="pointer-events-none absolute left-3 top-20 z-10 flex w-44 flex-col gap-3 md:w-60">
+        <div className="pointer-events-auto rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
           <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>Hazard severity</div>
           <div className="mt-2 space-y-1.5 text-sm">
             <div className="flex items-center gap-2"><SeverityDot s="high" /> High</div>
