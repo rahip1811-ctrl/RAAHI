@@ -194,5 +194,5 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [focus]);
 
-  return <div ref={containerRef} className="h-full w-full" />;
+  return <div ref={containerRef} style={{ width: "100%", height: "100%", minHeight: "400px" }} />;
 }
