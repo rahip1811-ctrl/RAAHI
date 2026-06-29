@@ -49,60 +49,50 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
 
-    const OLA_KEY = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
-
     const map = new maplibregl.Map({
       container: containerRef.current,
-      // Ola's India-rich vector tiles when a key is present (works reliably on
-      // Indian networks); otherwise Carto's colourful Voyager basemap.
-      style: OLA_KEY
-        ? "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json"
-        : {
-            version: 8,
-            sources: {
-              osm: {
-                type: "raster",
-                tiles: [
-                  "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                  "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                  "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                ],
-                tileSize: 256,
-                maxzoom: 19,
-                attribution: "© OpenStreetMap contributors © CARTO",
-              },
-            },
-            layers: [{ id: "osm", type: "raster", source: "osm" }],
+      // Tiles are proxied through our own /api/maptile so they load even on
+      // networks that block external tile CDNs. Carto Voyager = colourful streets.
+      style: {
+        version: 8,
+        sources: {
+          basemap: {
+            type: "raster",
+            tiles: ["/api/maptile?z={z}&x={x}&y={y}"],
+            tileSize: 256,
+            maxzoom: 19,
+            attribution: "© OpenStreetMap contributors © CARTO",
           },
+        },
+        layers: [{ id: "basemap", type: "raster", source: "basemap" }],
+      },
       center: [START.lng, START.lat],
       zoom: START.zoom,
-      transformRequest: (url: string) => {
-        if (OLA_KEY && url.includes("olamaps.io")) {
-          const u = new URL(url);
-          if (!u.searchParams.has("api_key")) u.searchParams.set("api_key", OLA_KEY);
-          return { url: u.toString() };
-        }
-        return { url };
-      },
     });
 
     mapRef.current = map;
 
     [100, 300, 600, 1200].forEach((t) => setTimeout(() => { mapRef.current?.resize(); }, t));
 
-    // Hazard density heatmap. Kept in a function so it can be re-added if the
-    // basemap style is swapped on the fly (marker overlays persist on their own).
-    let hazardsData: Hazard[] = [];
-    function addHeat() {
-      if (!map.isStyleLoaded()) return;
+    map.on("error", (e) => {
+      const m = (e && e.error && e.error.message) || "";
+      if (m.includes("3d_model")) return;
+      console.error("map error:", e?.error ?? e);
+    });
+
+    map.on("load", async () => {
+      map.resize();
       try {
-        if (map.getLayer("heat")) map.removeLayer("heat");
-        if (map.getSource("hz")) map.removeSource("hz");
+        const res = await fetch("/api/hazards");
+        const data = await res.json();
+        const hazards: Hazard[] = data.hazards ?? [];
+        if (mapRef.current !== map) return;
+
         map.addSource("hz", {
           type: "geojson",
           data: {
             type: "FeatureCollection",
-            features: hazardsData.map((h) => ({
+            features: hazards.map((h) => ({
               type: "Feature" as const,
               geometry: { type: "Point" as const, coordinates: [h.lng, h.lat] },
               properties: { severity: h.severity },
@@ -130,60 +120,8 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
             "heatmap-opacity": 0.9,
           },
         });
-      } catch {
-        /* style not ready yet */
-      }
-    }
 
-    // If Ola rate-limits us (503s), fall back to Carto so the map never goes
-    // blank. DOM markers persist; only the heatmap layer needs re-adding.
-    let olaTileFails = 0;
-    let mapFellBack = false;
-    map.on("error", (e) => {
-      const msg = (e && e.error && e.error.message) || "";
-      if (msg.includes("3d_model")) return;
-      if (OLA_KEY && !mapFellBack && msg.includes("olamaps.io")) {
-        if (++olaTileFails >= 3) {
-          mapFellBack = true;
-          try {
-            map.setStyle({
-              version: 8,
-              sources: {
-                osm: {
-                  type: "raster",
-                  tiles: [
-                    "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                    "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                    "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-                  ],
-                  tileSize: 256,
-                  maxzoom: 19,
-                  attribution: "© OpenStreetMap contributors © CARTO",
-                },
-              },
-              layers: [{ id: "osm", type: "raster", source: "osm" }],
-            });
-            map.once("style.load", () => addHeat());
-          } catch {
-            /* keep showing Ola if the swap fails */
-          }
-        }
-        return;
-      }
-      console.error("map error:", e?.error ?? e);
-    });
-
-    map.on("load", async () => {
-      map.resize();
-      try {
-        const res = await fetch("/api/hazards");
-        const data = await res.json();
-        hazardsData = data.hazards ?? [];
-        if (mapRef.current !== map) return;
-
-        addHeat();
-
-        for (const h of hazardsData) {
+        for (const h of hazards) {
           if (!h.photo_url) continue;
           const el = document.createElement("div");
           el.style.width = "44px";
