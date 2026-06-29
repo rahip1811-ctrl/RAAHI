@@ -30,6 +30,11 @@ function Podium({ l, i }: { l: Leader; i: number }) {
       <div className="text-xs font-semibold" style={{ color: LEVEL_COLOR[l.level] }}>{l.level}</div>
       <div className="font-display mt-2 text-2xl font-extrabold stat-pop" style={{ color: "var(--brand-strong)" }}>{l.impact}</div>
       <div className="text-xs" style={{ color: "var(--text-faint)" }}>Impact score</div>
+      <div className="mt-3 flex justify-center gap-4 border-t pt-3 text-xs" style={{ borderColor: "var(--border)" }}>
+        <span><span className="font-bold" style={{ color: "var(--text)" }}>{l.reports}</span> <span style={{ color: "var(--text-faint)" }}>reports</span></span>
+        <span><span className="font-bold" style={{ color: "var(--text)" }}>{l.resolved}</span> <span style={{ color: "var(--text-faint)" }}>resolved</span></span>
+        <span><span className="font-bold" style={{ color: "var(--text)" }}>{l.confirmations}</span> <span style={{ color: "var(--text-faint)" }}>conf.</span></span>
+      </div>
     </div>
   );
 }
@@ -78,18 +83,19 @@ export default function UsersPage() {
         {/* all contributors table */}
         <div className="overflow-hidden rounded-2xl border" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
           <div className="flex items-center gap-2 border-b px-5 py-3 font-semibold" style={{ borderColor: "var(--border)" }}><IconUsers size={18} /> All contributors</div>
-          <div className="grid grid-cols-[50px_1.6fr_0.8fr_0.8fr_0.8fr_1fr] gap-3 border-b px-5 py-2.5 text-xs font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
-            <span>Rank</span><span>Driver</span><span>Reports</span><span>Confirmed</span><span>Impact</span><span>Last active</span>
+          <div className="grid grid-cols-[44px_1.5fr_0.7fr_0.7fr_0.7fr_0.7fr_0.9fr] gap-3 border-b px-5 py-2.5 text-xs font-bold uppercase tracking-wide" style={{ borderColor: "var(--border)", color: "var(--text-faint)" }}>
+            <span>Rank</span><span>Driver</span><span>Reports</span><span>Resolved</span><span>Confirmed</span><span>Impact</span><span>Last active</span>
           </div>
           <div className="divide-y" style={{ borderColor: "var(--border)" }}>
             {leaders?.map((l, i) => (
-              <div key={l.id} className="grid grid-cols-[50px_1.6fr_0.8fr_0.8fr_0.8fr_1fr] items-center gap-3 px-5 py-3 text-sm transition-colors hover:bg-[var(--surface-2)]">
+              <div key={l.id} className="grid grid-cols-[44px_1.5fr_0.7fr_0.7fr_0.7fr_0.7fr_0.9fr] items-center gap-3 px-5 py-3 text-sm transition-colors hover:bg-[var(--surface-2)]">
                 <span className="font-display font-extrabold" style={{ color: i < 3 ? medal[i] : "var(--text-muted)" }}>{i + 1}</span>
                 <span className="flex items-center gap-2.5">
                   <span className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold" style={{ background: "var(--brand)", color: "var(--brand-ink)" }}>{l.name.charAt(0).toUpperCase()}</span>
                   <span className="min-w-0"><span className="block truncate font-semibold">{l.name}</span><span className="block text-xs" style={{ color: LEVEL_COLOR[l.level] }}>{l.level}</span></span>
                 </span>
                 <span style={{ color: "var(--text-muted)" }}>{l.reports}</span>
+                <span style={{ color: "var(--text-muted)" }}>{l.resolved}</span>
                 <span style={{ color: "var(--text-muted)" }}>{l.confirmations}</span>
                 <span className="font-semibold" style={{ color: "var(--brand-strong)" }}>{l.impact}</span>
                 <span className="text-xs" style={{ color: "var(--text-faint)" }}>{ago(l.lastActive)}</span>

@@ -64,7 +64,7 @@ export default function DashboardOverview() {
   const [contributors, setContributors] = useState<number | null>(null);
 
   useEffect(() => {
-    fetch("/api/dashboard").then((r) => r.json()).then(setData).catch(() => {});
+    fetch("/api/dashboard").then((r) => r.json()).then((d) => { if (d && d.stats) setData(d); }).catch(() => {});
     fetch("/api/hazards").then((r) => r.json()).then((d) => setFeed(d.hazards ?? [])).catch(() => {});
     fetch("/api/leaderboard").then((r) => r.json()).then((d) => setContributors((d.leaders ?? []).length)).catch(() => {});
   }, []);
@@ -144,8 +144,8 @@ export default function DashboardOverview() {
             <h2 className="mb-3 font-semibold">Top hotspots</h2>
             <div className="space-y-3">
               {!data && <p className="text-sm" style={{ color: "var(--text-faint)" }}>Loading…</p>}
-              {data?.hotspots.slice(0, 5).map((h, i) => {
-                const max = Math.max(1, ...(data?.hotspots.map((x) => x.score) ?? [1]));
+              {data?.hotspots?.slice(0, 5).map((h, i) => {
+                const max = Math.max(1, ...(data?.hotspots?.map((x) => x.score) ?? [1]));
                 return (
                   <div key={i} className="flex items-center gap-3">
                     <span className="w-4 text-sm font-bold" style={{ color: "var(--text-muted)" }}>{i + 1}</span>

@@ -19,9 +19,40 @@ function sevColor(s: string) {
   return s === "high" ? "#ef4444" : s === "medium" ? "#f59e0b" : "#22c55e";
 }
 
-export default function DashboardMap() {
+export default function DashboardMap({ focus }: { focus?: { lat: number; lng: number; label?: string } | null } = {}) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<maplibregl.Map | null>(null);
+  const focusMarkerRef = useRef<maplibregl.Marker | null>(null);
+  const focusRef = useRef(focus);
+  focusRef.current = focus;
+
+  function readUrlFocus(): { lat: number; lng: number; label?: string } | null {
+    if (typeof window === "undefined") return null;
+    const p = new URLSearchParams(window.location.search);
+    const lat = Number(p.get("lat")), lng = Number(p.get("lng"));
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+    return { lat, lng, label: p.get("label") ?? undefined };
+  }
+
+  function applyFocus(f: { lat: number; lng: number; label?: string } | null | undefined) {
+    const map = mapRef.current;
+    if (!map || !f) return;
+    if (!document.getElementById("raahi-focus-style")) {
+      const st = document.createElement("style");
+      st.id = "raahi-focus-style";
+      st.textContent = ".raahi-focus-pin{width:22px;height:22px;border-radius:50%;background:#16a34a;border:3px solid #fff;box-shadow:0 0 0 0 rgba(22,163,74,.6);animation:raahiPulse 1.6s infinite}@keyframes raahiPulse{0%{box-shadow:0 0 0 0 rgba(22,163,74,.55)}70%{box-shadow:0 0 0 16px rgba(22,163,74,0)}100%{box-shadow:0 0 0 0 rgba(22,163,74,0)}}";
+      document.head.appendChild(st);
+    }
+    if (focusMarkerRef.current) { focusMarkerRef.current.remove(); focusMarkerRef.current = null; }
+    const el = document.createElement("div");
+    el.className = "raahi-focus-pin";
+    focusMarkerRef.current = new maplibregl.Marker({ element: el }).setLngLat([f.lng, f.lat]).addTo(map);
+    new maplibregl.Popup({ offset: 18, closeButton: false })
+      .setLngLat([f.lng, f.lat])
+      .setHTML(`<div style="font-family:sans-serif;font-weight:600;text-transform:capitalize">${f.label ?? "Reported hazard"}</div>`)
+      .addTo(map);
+    map.flyTo({ center: [f.lng, f.lat], zoom: 15, speed: 1.2 });
+  }
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
@@ -153,6 +184,8 @@ export default function DashboardMap() {
             .setLngLat([h.lng, h.lat])
             .addTo(map);
         }
+
+        applyFocus(focusRef.current ?? readUrlFocus());
       } catch (err) {
         console.error("dashboard map load failed:", err);
       }
@@ -163,6 +196,11 @@ export default function DashboardMap() {
       mapRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    applyFocus(focus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [focus]);
 
   return <div ref={containerRef} className="h-full w-full" />;
 }

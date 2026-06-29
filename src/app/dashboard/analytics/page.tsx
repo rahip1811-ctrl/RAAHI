@@ -53,8 +53,10 @@ export default function AnalyticsPage() {
       <div className="relative">
         <DashHeader title="Analytics" subtitle="Distribution of what's on the roads right now." />
 
-        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-4">
+        <div className="mb-6 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
           <Mini label="Total reports" value={t?.allTime ?? "—"} color="var(--text)" />
+          <Mini label="Active now" value={t?.active ?? "—"} color="var(--brand-strong)" />
+          <Mini label="Resolved" value={t?.resolved ?? "—"} color="#3b82f6" />
           <Mini label="Most common" value={t?.mostCommon ? typeLabel(t.mostCommon) : "—"} color="var(--danger)" />
           <Mini label="High severity" value={t?.high ?? "—"} color="var(--danger)" />
           <Mini label="Resolution rate" value={t ? `${t.resolutionRate}%` : "—"} color="var(--clear)" />
@@ -78,6 +80,29 @@ export default function AnalyticsPage() {
             {a && <LineChart data={a.overTime} />}
           </div>
         </div>
+
+        {a && a.byType.length > 0 && (
+          <div className="mt-5 rounded-2xl border p-6" style={{ background: "var(--surface)", borderColor: "var(--border)" }}>
+            <h2 className="mb-4 font-semibold">Hazard type breakdown</h2>
+            <div className="space-y-3">
+              {(() => {
+                const total = a.byType.reduce((x, y) => x + y.count, 0) || 1;
+                return a.byType.map((bt) => {
+                  const pct = Math.round((bt.count / total) * 100);
+                  return (
+                    <div key={bt.type} className="flex items-center gap-3 text-sm">
+                      <span className="w-28 shrink-0 font-medium">{typeLabel(bt.type)}</span>
+                      <div className="h-2.5 flex-1 overflow-hidden rounded-full" style={{ background: "var(--surface-2)" }}>
+                        <div className="h-full rounded-full" style={{ width: `${pct}%`, background: TYPE_COLORS[bt.type] ?? "var(--text-faint)" }} />
+                      </div>
+                      <span className="w-16 text-right" style={{ color: "var(--text-muted)" }}>{bt.count} · {pct}%</span>
+                    </div>
+                  );
+                });
+              })()}
+            </div>
+          </div>
+        )}
       </div>
     </main>
   );

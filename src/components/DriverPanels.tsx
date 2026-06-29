@@ -24,8 +24,8 @@ export default function DriverPanels() {
   return (
     <>
       {/* ── left control stack ── */}
-      <div className="pointer-events-none absolute left-3 top-20 z-10 hidden w-60 flex-col gap-3 md:flex">
-        <div className="pointer-events-auto rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
+      
+        <div className="pointer-events-auto round<div className="pointer-events-none absolute left-3 top-20 z-10 flex w-44 flex-col gap-3 md:w-60">ed-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
           <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>Hazard severity</div>
           <div className="mt-2 space-y-1.5 text-sm">
             <div className="flex items-center gap-2"><SeverityDot s="high" /> High</div>
@@ -52,7 +52,7 @@ export default function DriverPanels() {
       </div>
 
       {/* ── right nearby panel ── */}
-      <div className="pointer-events-none absolute right-3 top-20 z-10 hidden w-72 md:block">
+      <div className="pointer-events-none absolute right-3 top-20 z-10 hidden w-72 md:block lg:block">
         <div className="pointer-events-auto rounded-2xl border" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
           <div className="flex items-center justify-between border-b p-4" style={{ borderColor: "var(--border)" }}>
             <span className="font-semibold">Nearby hazards</span>

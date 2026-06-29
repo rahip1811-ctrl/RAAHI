@@ -169,7 +169,7 @@ export default function ReportsPage() {
                 <div className="text-xs" style={{ color: "var(--text-faint)" }}>Reported {ago(sel.created_at)}</div>
 
                 <div className="mt-4 flex gap-2">
-                  <Link href="/app" className="btn-press flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold" style={{ background: "var(--brand)", color: "var(--brand-ink)" }}><IconPin size={15} /> View on map</Link>
+                  <Link href={`/dashboard/map?lat=${sel.lat}&lng=${sel.lng}&label=${encodeURIComponent(typeLabel(sel.type))}`} className="btn-press flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold" style={{ background: "var(--brand)", color: "var(--brand-ink)" }}><IconPin size={15} /> View on map</Link>
                   {sel.status === "resolved" ? (
                     <button disabled={busy} onClick={() => resolve(sel.id, true)} className="btn-press rounded-xl border px-4 py-2.5 text-sm font-semibold" style={{ borderColor: "var(--border)", color: "var(--text-muted)" }}>Reopen</button>
                   ) : (
