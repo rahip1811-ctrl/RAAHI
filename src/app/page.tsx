@@ -1,5 +1,6 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import AuthStatus from "@/components/AuthStatus";
 import ThemeToggle from "@/components/ThemeToggle";
@@ -171,6 +172,12 @@ const BLUE = "#3b82f6", ORANGE = "#f59e0b", PURPLE = "#8b5cf6";
 const tint = (c: string) => `${c}22`;
 
 export default function Home() {
+  const [m, setM] = useState<{ hazards?: number; active?: number; resolved?: number; contributors?: number }>({});
+  useEffect(() => {
+    fetch("/api/dashboard").then((r) => r.json()).then((d) => { if (d?.stats) setM((p) => ({ ...p, hazards: d.stats.allTime, active: d.stats.total, resolved: d.stats.resolved })); }).catch(() => {});
+    fetch("/api/leaderboard").then((r) => r.json()).then((d) => setM((p) => ({ ...p, contributors: (d.leaders ?? []).length }))).catch(() => {});
+  }, []);
+
   return (
     <main className="relative overflow-hidden" style={{ background: "var(--bg)", color: "var(--text)" }}>
       <span className="page-glow" style={{ top: -160, right: -40 }} />
@@ -238,14 +245,14 @@ export default function Home() {
         <div className="grid gap-3 lg:grid-cols-[2.6fr_1fr]">
           <div className="grid grid-cols-2 overflow-hidden rounded-2xl border sm:grid-cols-3 lg:grid-cols-5" style={{ background: "var(--surface)", borderColor: "var(--border)", boxShadow: "var(--shadow-sm)" }}>
             {[
-              { icon: <ShieldMark size={20} />, value: "14K+", label: "Trusted by", sub: "Drivers" },
-              { icon: <Road s={20} />, value: "25K+", label: "Hazards reported", sub: "Across Ahmedabad" },
-              { icon: <IconCheck size={20} />, value: "120K+", label: "Lives impacted", sub: "Every month" },
-              { icon: <IconUsers size={20} />, value: "9K+", label: "Active community", sub: "On the roads" },
-              { icon: <Trophy s={20} />, value: "#1", label: "Ranked", sub: "For civic tech innovation" },
-            ].map((m, i) => (
+              { icon: <Road s={20} />, value: String(m.hazards ?? 21), label: "Hazards reported", sub: "Across Ahmedabad" },
+              { icon: <IconUsers size={20} />, value: String(m.contributors ?? 12), label: "Contributors", sub: "Reporting hazards" },
+              { icon: <ShieldMark size={20} />, value: String(m.active ?? 20), label: "Active now", sub: "Live on the map" },
+              { icon: <IconCheck size={20} />, value: String(m.resolved ?? 1), label: "Resolved", sub: "Cleared from roads" },
+              { icon: <Trophy s={20} />, value: "PostGIS", label: "Spatial engine", sub: "On Amazon Aurora" },
+            ].map((cell, i) => (
               <div key={i} className="border-b sm:border-r last:border-r-0" style={{ borderColor: "var(--border)" }}>
-                <Metric {...m} />
+                <Metric {...cell} />
               </div>
             ))}
           </div>

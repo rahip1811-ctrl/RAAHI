@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import DashHeader from "@/components/DashHeader";
 import DashboardMap from "@/components/DashboardMap";
 
@@ -14,12 +14,19 @@ const LEGEND = [
 
 export default function DashMapPage() {
   const [layers, setLayers] = useState<Record<string, boolean>>({ Hazards: true, Traffic: true, Roads: false });
+  const [focus, setFocus] = useState<{ lat: number; lng: number; label?: string } | null>(null);
+
+  useEffect(() => {
+    const p = new URLSearchParams(window.location.search);
+    const lat = Number(p.get("lat")), lng = Number(p.get("lng"));
+    if (Number.isFinite(lat) && Number.isFinite(lng)) setFocus({ lat, lng, label: p.get("label") ?? undefined });
+  }, []);
 
   return (
     <main className="flex h-screen flex-col px-6 py-7 lg:px-8">
       <DashHeader title="City hazard map" subtitle="Live density heatmap across Ahmedabad." />
       <div className="relative flex-1 overflow-hidden rounded-2xl border" style={{ borderColor: "var(--border)", minHeight: "400px" }}>
-        <DashboardMap />
+        <DashboardMap focus={focus} />
 
         {/* overlay control card */}
         <div className="absolute left-4 top-4 z-10 w-52 rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>

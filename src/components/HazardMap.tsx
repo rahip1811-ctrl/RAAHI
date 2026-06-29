@@ -225,9 +225,37 @@ export default function HazardMap() {
 
     // The Ola style references a "3d_model" layer not in the free tiles —
     // harmless. Swallow that one warning, still log any real errors.
+    // If Ola's tile server rate-limits us (503s), fall back to free
+    // OpenStreetMap raster tiles so the map never goes blank. DOM markers
+    // persist across a style swap, so nothing else needs re-adding.
+    let olaTileFails = 0;
+    let mapFellBack = false;
     map.on("error", (e) => {
       const msg = (e && e.error && e.error.message) || "";
       if (msg.includes("3d_model")) return;
+      if (OLA_KEY && !mapFellBack && msg.includes("olamaps.io")) {
+        if (++olaTileFails >= 3) {
+          mapFellBack = true;
+          try {
+            map.setStyle({
+              version: 8,
+              sources: {
+                osm: {
+                  type: "raster",
+                  tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+                  tileSize: 256,
+                  maxzoom: 19,
+                  attribution: "© OpenStreetMap contributors",
+                },
+              },
+              layers: [{ id: "osm", type: "raster", source: "osm" }],
+            });
+          } catch {
+            /* keep showing Ola if the swap fails */
+          }
+        }
+        return;
+      }
       console.error("map error:", e?.error ?? e);
     });
 

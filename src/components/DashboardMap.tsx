@@ -26,14 +26,6 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
   const focusRef = useRef(focus);
   focusRef.current = focus;
 
-  function readUrlFocus(): { lat: number; lng: number; label?: string } | null {
-    if (typeof window === "undefined") return null;
-    const p = new URLSearchParams(window.location.search);
-    const lat = Number(p.get("lat")), lng = Number(p.get("lng"));
-    if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
-    return { lat, lng, label: p.get("label") ?? undefined };
-  }
-
   function applyFocus(f: { lat: number; lng: number; label?: string } | null | undefined) {
     const map = mapRef.current;
     if (!map || !f) return;
@@ -162,7 +154,7 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
             .addTo(map);
         }
 
-        applyFocus(focusRef.current ?? readUrlFocus());
+        applyFocus(focusRef.current);
       } catch (err) {
         console.error("dashboard map load failed:", err);
       }
