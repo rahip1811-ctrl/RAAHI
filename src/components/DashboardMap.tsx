@@ -95,6 +95,7 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
     });
 
     map.on("load", async () => {
+      map.setCenter([START.lng, START.lat]);
       try {
         const res = await fetch("/api/hazards");
         const data = await res.json();
