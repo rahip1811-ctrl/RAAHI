@@ -51,20 +51,16 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      // Carto's colourful "Voyager" basemap (streets, parks, labels).
+      // Standard OpenStreetMap raster (classic beige land, OSM road colours).
       style: {
         version: 8,
         sources: {
           basemap: {
             type: "raster",
-            tiles: [
-              "https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-              "https://b.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-              "https://c.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png",
-            ],
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
             tileSize: 256,
             maxzoom: 19,
-            attribution: "© OpenStreetMap contributors © CARTO",
+            attribution: "© OpenStreetMap contributors",
           },
         },
         layers: [{ id: "basemap", type: "raster", source: "basemap" }],
