@@ -87,6 +87,9 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
       },
     });
     mapRef.current = map;
+    map.on("style.load", () => {
+      map.jumpTo({ center: [START.lng, START.lat], zoom: START.zoom });
+    });
 
     map.on("error", (e) => {
       const m = (e && e.error && e.error.message) || "";
@@ -95,7 +98,7 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
     });
 
     map.on("load", async () => {
-      map.setCenter([START.lng, START.lat]);
+      map.jumpTo({ center: [START.lng, START.lat], zoom: START.zoom });
       try {
         const res = await fetch("/api/hazards");
         const data = await res.json();
