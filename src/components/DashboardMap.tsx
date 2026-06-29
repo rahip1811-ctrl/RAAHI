@@ -56,35 +56,24 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
 
   useEffect(() => {
     if (mapRef.current || !containerRef.current) return;
-    const OLA_KEY = process.env.NEXT_PUBLIC_OLA_MAPS_API_KEY;
 
     const map = new maplibregl.Map({
       container: containerRef.current,
-      style: OLA_KEY
-        ? "https://api.olamaps.io/tiles/vector/v1/styles/default-light-standard/style.json"
-        : {
-            version: 8,
-            sources: {
-              osm: {
-                type: "raster",
-                tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
-                tileSize: 256,
-                maxzoom: 19,
-              },
-            },
-            layers: [{ id: "osm", type: "raster", source: "osm" }],
+      style: {
+        version: 8,
+        sources: {
+          osm: {
+            type: "raster",
+            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            tileSize: 256,
+            maxzoom: 19,
+            attribution: "© OpenStreetMap contributors",
           },
+        },
+        layers: [{ id: "osm", type: "raster", source: "osm" }],
+      },
       center: [START.lng, START.lat],
       zoom: START.zoom,
-      transformRequest: (url: string) => {
-        if (OLA_KEY && url.includes("olamaps.io")) {
-          const u = new URL(url);
-          if (!u.searchParams.has("api_key"))
-            u.searchParams.set("api_key", OLA_KEY);
-          return { url: u.toString() };
-        }
-        return { url };
-      },
     });
 
     mapRef.current = map;
@@ -92,11 +81,6 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
     [100, 300, 600, 1200].forEach((t) =>
       setTimeout(() => { mapRef.current?.resize(); }, t)
     );
-
-    map.on("style.load", () => {
-      map.resize();
-      map.jumpTo({ center: [START.lng, START.lat], zoom: START.zoom });
-    });
 
     map.on("error", (e) => {
       const m = (e && e.error && e.error.message) || "";
@@ -124,6 +108,7 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
             })),
           },
         });
+
         map.addLayer({
           id: "heat",
           type: "heatmap",
