@@ -14,8 +14,8 @@ export function applyTheme(mode: ThemeMode) {
 }
 
 export function getMode(): ThemeMode {
-  if (typeof localStorage === "undefined") return "auto";
-  return (localStorage.getItem("raahi-theme") as ThemeMode) || "auto";
+  if (typeof localStorage === "undefined") return "light";
+  return (localStorage.getItem("raahi-theme") as ThemeMode) || "light";
 }
 
 export function setMode(mode: ThemeMode) {

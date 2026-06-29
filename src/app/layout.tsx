@@ -18,7 +18,7 @@ export const metadata: Metadata = {
 const themeScript = `
 (function () {
   try {
-    var mode = localStorage.getItem('raahi-theme') || 'auto';
+    var mode = localStorage.getItem('raahi-theme') || 'light';
     var theme = mode;
     if (mode === 'auto') {
       var h = new Date().getHours();
