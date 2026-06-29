@@ -56,10 +56,16 @@ export default function DashboardMap({ focus }: { focus?: { lat: number; lng: nu
         sources: {
           osm: {
             type: "raster",
-            tiles: ["https://tile.openstreetmap.org/{z}/{x}/{y}.png"],
+            // Carto's free light basemap — far more reliable for embedded apps
+            // than tile.openstreetmap.org, and matches the light dashboard theme.
+            tiles: [
+              "https://a.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://b.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+              "https://c.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png",
+            ],
             tileSize: 256,
             maxzoom: 19,
-            attribution: "© OpenStreetMap contributors",
+            attribution: "© OpenStreetMap contributors © CARTO",
           },
         },
         layers: [{ id: "osm", type: "raster", source: "osm" }],
