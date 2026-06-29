@@ -25,15 +25,15 @@ export default function DriverPanels() {
     <>
       {/* ── left control stack ── */}
       
-        <div className="pointer-events-none absolute left-3 top-20 z-10 flex w-44 flex-col gap-3 md:w-60">
-        <div className="pointer-events-auto rounded-2xl border p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
-          <div className="text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>Hazard severity</div>
+        <div className="pointer-events-none absolute left-3 top-20 z-10 flex w-36 flex-col gap-2 md:w-60">
+        <div className="pointer-events-auto rounded-2xl border p-2 md:p-4" style={{ background: "var(--surface)", borderColor: "var(--border)", color: "var(--text)", boxShadow: "var(--shadow)" }}>
+          <div className="text-[10px] font-bold uppercase tracking-wide md:text-xs" style={{ color: "var(--text-faint)" }}>Hazard severity</div>
           <div className="mt-2 space-y-1.5 text-sm">
             <div className="flex items-center gap-2"><SeverityDot s="high" /> High</div>
             <div className="flex items-center gap-2"><SeverityDot s="medium" /> Medium</div>
             <div className="flex items-center gap-2"><SeverityDot s="low" /> Low</div>
           </div>
-          <div className="mt-4 text-xs font-bold uppercase tracking-wide" style={{ color: "var(--text-faint)" }}>Map layers</div>
+          <div className="mt-4 text-[10px] font-bold uppercase tracking-wide md:text-xs" style={{ color: "var(--text-faint)" }}>Map layers</div>
           <div className="mt-2 space-y-1.5 text-sm">
             {LAYERS.map((l) => (
               <label key={l} className="flex cursor-pointer items-center gap-2">
